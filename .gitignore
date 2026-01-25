@@ -1,0 +1,27 @@
+# .NET
+**/bin/
+**/obj/
+**/*.user
+**/*.suo
+**/appsettings.Development.json
+**/local.settings.json
+
+# Rider / VS
+**/.idea/
+**/.vs/
+**/.vscode/
+
+# Azure Functions
+**/azure-functions-core-tools/
+
+# Node (pour Angular plus tard)
+**/node_modules/
+**/dist/
+
+# Docker
+**/.dockerignore
+
+# OS
+.DS_Store
+Thumbs.db
+```
