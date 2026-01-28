@@ -9,6 +9,10 @@
   </Folder>
   <Folder Name="/src/Presentation/">
     <Project Path="MyBudgetIA.Api/MyBudgetIA.Api.csproj" />
+    <Project Path="Shared/Shared.csproj" Id="d7c8bd16-17ee-498c-9173-ebc3a85bbade" />
   </Folder>
-  <Folder Name="/tests/" />
+  <Folder Name="/tests/">
+    <Project Path="MyBudget.IA.API.IntegrationTests/MyBudgetIA.Api.Tests.csproj" Id="cffff571-c9f9-41a2-aac2-89ee045aef93" />
+    <Project Path="MyBudgetIA.Infrastructure.Tests/MyBudgetIA.Infrastructure.Tests.csproj" Id="8f7d057c-17e3-4bef-b7b7-0ad21d647877" />
+  </Folder>
 </Solution>

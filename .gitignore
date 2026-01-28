@@ -6,6 +6,21 @@
 **/appsettings.Development.json
 **/local.settings.json
 
+# launchSettings.json contient des URLs et configs locales
+**/Properties/launchSettings.json
+
+# appsettings avec secrets
+appsettings.Development.json
+appsettings.Local.json
+appsettings.Production.json
+
+# ✅ GARDE ces fichiers (templates sans secrets)
+!appsettings.json
+!appsettings.Development.template.json
+
+appsettings.local.json
+appsettings.*.local.json
+
 # Rider / VS
 **/.idea/
 **/.vs/
@@ -24,4 +39,8 @@
 # OS
 .DS_Store
 Thumbs.db
+
+# Logs
+logs/
+Logs/
 ```
