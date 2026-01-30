@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using MyBudgetIA.Application.Photo;
 using MyBudgetIA.Application.Photo.Dtos;
+using Shared.Models;
 
 namespace MyBudgetIA.Api.Controllers
 {
@@ -16,10 +17,23 @@ namespace MyBudgetIA.Api.Controllers
         /// <returns>An IActionResult indicating the result of the upload operation.</returns>
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> UploadPhotos([FromForm] IList<IFormFile> photos)
         {
-            if (photos is null || !photos.Any()) return BadRequest("No photos uploaded.");
+            if (photos is null || !photos.Any())
+            {
+                return FailResponse(
+                    message: "No photos uploaded.",
+                    errors:
+                    [
+                        new ApiError
+                        {
+                            Code = ErrorCodes.BadRequest,
+                            Field = "Photos",
+                            Message = "You must upload at least one photo."
+                        }
+                    ]);
+            }
 
             var photosDtos = photos.Select(
                     f => new PhotoUploadDto

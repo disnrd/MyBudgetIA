@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using MyBudgetIA.Api.Middlewares;
 using MyBudgetIA.Application.Exceptions;
+using MyBudgetIA.Infrastructure.Exceptions;
 using Shared.Models;
 using System;
 using System.Collections.Generic;
@@ -169,6 +170,64 @@ namespace MyBudgetIA.Api.Tests
 
         #endregion
 
+        #region ApplicationException Tests
+
+        [Test]
+        public async Task ExceptionHandlingMiddleware_WithApplicationException_ShouldReturn400AndIncludeApiError()
+        {
+            // Arrange
+            var ex = new MaxPhotoCountExceptions(maxPhotosAllowed: 5, photosProvided: 6);
+
+            Task next(HttpContext ctx) => throw ex;
+            _middleware = new ExceptionHandlingMiddleware(next, _loggerMock.Object, _environmentMock.Object);
+
+            // Act
+            await _middleware.InvokeAsync(_context);
+
+            // Assert
+            Assert.That(_context.Response.StatusCode, Is.EqualTo(400));
+
+            var response = await GetResponseFromContext();
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(response.Success, Is.False);
+                Assert.That(response.Message, Is.EqualTo(ex.PublicMessage));
+                Assert.That(response.Errors, Is.Not.Null);
+                Assert.That(response.Errors, Has.Length.EqualTo(1));
+                Assert.That(response.Errors[0].Code, Is.EqualTo(ex.ErrorCode));
+                Assert.That(response.Errors[0].Message, Is.EqualTo(ex.PublicMessage));
+            }
+        }
+
+        [Test]
+        public async Task ExceptionHandlingMiddleware_WithApplicationException_InProduction_ShouldStillReturnPublicMessage()
+        {
+            // Arrange
+            _environmentMock.Setup(e => e.EnvironmentName).Returns("Production");
+            var ex = new MaxPhotoCountExceptions(maxPhotosAllowed: 5, photosProvided: 6);
+
+            Task next(HttpContext ctx) => throw ex;
+            _middleware = new ExceptionHandlingMiddleware(next, _loggerMock.Object, _environmentMock.Object);
+
+            // Act
+            await _middleware.InvokeAsync(_context);
+
+            // Assert
+            Assert.That(_context.Response.StatusCode, Is.EqualTo(400));
+            var response = await GetResponseFromContext();
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(response.Success, Is.False);
+                Assert.That(response.Message, Is.EqualTo(ex.PublicMessage));
+                Assert.That(response.Errors, Is.Not.Null);
+                Assert.That(response.Errors, Has.Length.EqualTo(1));
+                Assert.That(response.Errors[0].Code, Is.EqualTo(ex.ErrorCode));
+                Assert.That(response.Errors[0].Message, Is.EqualTo(ex.PublicMessage));
+            }
+        }
+
+        #endregion
 
         #region UnhandledException Tests - Development
 
@@ -405,6 +464,67 @@ namespace MyBudgetIA.Api.Tests
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.AtLeastOnce);
+        }
+
+        #endregion
+
+        #region InfrastructureException Tests
+
+        [Test]
+        public async Task ExceptionHandlingMiddleware_WithInfrastructureException_InDevelopment_ShouldReturnDetails()
+        {
+            _environmentMock.Setup(e => e.EnvironmentName).Returns("Development");
+            const string message = "Blob storage unavailable.";
+
+            var ex = new BlobStorageException(
+                blobName: "testblob.txt",
+                azureErrorCode: "500",
+                message: message);
+
+            Task next(HttpContext ctx) => throw ex;
+            _middleware = new ExceptionHandlingMiddleware(next, _loggerMock.Object, _environmentMock.Object);
+
+            await _middleware.InvokeAsync(_context);
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(_context.Response.StatusCode, Is.EqualTo(503));
+                var response = await GetResponseFromContext();
+                Assert.That(response.Message, Is.EqualTo(message));
+                Assert.That(response.Errors, Has.Length.EqualTo(1));
+                Assert.That(response.Errors[0].Code, Is.EqualTo(ErrorCodes.BlobStorageError));
+                Assert.That(response.Errors[0].Message, Is.EqualTo(message));
+            }
+        }
+
+        [Test]
+        public async Task ExceptionHandlingMiddleware_WithInfrastructureException_InProduction_ShouldReturnGenericMessage()
+        {
+            // Arrange
+            _environmentMock.Setup(e => e.EnvironmentName).Returns("Production");
+
+            var ex = new BlobStorageException(
+                blobName: "testblob.txt",
+                azureErrorCode: "500",
+                message: "Connection string: Server=secret;Password=secret123");
+
+            Task next(HttpContext ctx) => throw ex;
+            _middleware = new ExceptionHandlingMiddleware(next, _loggerMock.Object, _environmentMock.Object);
+
+            // Act
+            await _middleware.InvokeAsync(_context);
+
+            // Assert
+            Assert.That(_context.Response.StatusCode, Is.EqualTo(503)); 
+            var response = await GetResponseFromContext();
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(response.Success, Is.False);
+                Assert.That(response.Message, Is.EqualTo(ExceptionMessages.InternalServerError));
+                Assert.That(response.Message, Does.Not.Contain("secret"));
+                Assert.That(response.Errors, Is.Not.Null.And.Empty);
+            }
         }
 
         #endregion

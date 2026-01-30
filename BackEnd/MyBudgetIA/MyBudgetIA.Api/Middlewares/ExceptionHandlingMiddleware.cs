@@ -74,7 +74,6 @@ namespace MyBudgetIA.Api.Middlewares
                 }
             }
 
-
             var response = new ApiResponse
             {
                 Success = false,
@@ -124,15 +123,25 @@ namespace MyBudgetIA.Api.Middlewares
 
                 Application.Exceptions.ApplicationException appEx => (
                     appEx.StatusCode,
-                    appEx.Message,
-                    new[] { new ApiError { Code = appEx.ErrorCode, Message = appEx.Message } }
+                    appEx.PublicMessage,
+                    new[] { new ApiError { Code = appEx.ErrorCode, Message = appEx.PublicMessage } }
+                ),
+
+                Infrastructure.Exceptions.InfrastructureException infraEx => (
+                    infraEx.StatusCode,
+                    environment.IsDevelopment()
+                        ? infraEx.PublicMessage
+                        : ExceptionMessages.ErrorMessages.InternalServerError,
+                    environment.IsDevelopment()
+                        ? new[] { new ApiError { Code = infraEx.ErrorCode, Message = infraEx.PublicMessage } }
+                        : []
                 ),
 
                 _ => (
                     500,
                     environment.IsDevelopment()
                         ? exception.Message
-                        : ExceptionMessages.LogMessages.InternalServerError,
+                        : ExceptionMessages.ErrorMessages.InternalServerError,
                     environment.IsDevelopment()
                         ? [new ApiError { Code = ErrorCodes.InternalError, Message = exception.StackTrace ?? string.Empty }]
                         : []
@@ -150,7 +159,6 @@ namespace MyBudgetIA.Api.Middlewares
                 public const string ServerErrorDetails = "Server error [TraceId: {TraceId}]: {ExceptionType} - {Message}";
                 public const string ClientError = "Client error ({StatusCode}) [TraceId: {TraceId}]: {Message}";
                 public const string ResponseWriteError = "Error writing exception response to client [TraceId: {TraceId}]";
-                public const string InternalServerError = "An internal error occurred";
             }
 
             public static class ErrorMessages

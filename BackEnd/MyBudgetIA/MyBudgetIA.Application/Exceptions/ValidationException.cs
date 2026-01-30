@@ -11,7 +11,11 @@ namespace MyBudgetIA.Application.Exceptions
     /// form processing.</remarks>
     /// <param name="errors">A read-only dictionary containing validation errors, where each key is the name of a field or property and the
     /// value is an array of error messages associated with that field. Cannot be null.</param>
-    public sealed class ValidationException(IReadOnlyDictionary<string, string[]> errors) : ApplicationException(DefaultMessage, ErrorCodes.ValidationError, 400)
+    public sealed class ValidationException(IReadOnlyDictionary<string, string[]> errors)
+        : ApplicationException(
+            publicMessage: DefaultMessage,
+            errorCode: ErrorCodes.ValidationError,
+            statusCode: 400)
     {
         /// <summary>
         /// Gets a collection of validation errors, grouped by field or property name.

@@ -1,4 +1,6 @@
+using FluentValidation;
 using MyBudgetIA.Api.Middlewares;
+using MyBudgetIA.Application;
 using MyBudgetIA.Infrastructure.Extensions;
 using Serilog;
 
@@ -23,6 +25,8 @@ try
            .Enrich.FromLogContext()
            .Enrich.WithProperty("Application", "MyBudgetIA.API")
            .Enrich.WithProperty("Environment", context.HostingEnvironment.EnvironmentName));
+
+    builder.Services.AddValidatorsFromAssemblyContaining<AssemblyMarker>();
 
     // Add services to the container.
     builder.Services.AddInfrastructure();
