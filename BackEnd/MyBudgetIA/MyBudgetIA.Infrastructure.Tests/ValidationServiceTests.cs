@@ -5,6 +5,7 @@ using MyBudgetIA.Infrastructure.Services;
 
 namespace MyBudgetIA.Infrastructure.Tests
 {
+    // TODO : rajouter tests pour ValidateAndThrowAllAsync
 
     /// <summary>
     /// Unit tests for class <see cref="ValidationService"/>

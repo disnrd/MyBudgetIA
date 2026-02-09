@@ -1,4 +1,6 @@
-﻿namespace MyBudgetIA.Application.Interfaces
+﻿using MyBudgetIA.Application.Photo.Dtos;
+
+namespace MyBudgetIA.Application.Interfaces
 {
     /// <summary>
     /// Technical services defining a contract for interacting with a blob storage service.
@@ -8,5 +10,14 @@
     /// and behaviors are defined by the implementing class.</remarks>
     public interface IBlobStorageService
     {
+        /// <summary>
+        /// Asynchronously uploads a file to the blob storage using the specified upload request.
+        /// </summary>
+        /// <remarks>If the cancellation token is triggered before the upload completes, the operation is
+        /// canceled and the returned task will be in a canceled state.</remarks>
+        /// <param name="request">The details of the file to upload.</param>
+        /// <param name="cancellationToken">A token that can be used to cancel the upload operation.</param>
+        /// <returns>A task that represents the asynchronous upload operation.</returns>
+        Task<BlobUploadResult> UploadFileAsync(BlobUploadRequest request, CancellationToken cancellationToken);
     }
 }

@@ -12,6 +12,8 @@ namespace MyBudgetIA.Infrastructure.Tests
     [TestFixture]
     public class ValidationServiceIntegrationTests
     {
+        // TODO : rajouter tests pour ValidateAndThrowAllAsync
+
         private IServiceProvider _serviceProvider;
         private ValidationService _validationService;
         private IServiceCollection _services;

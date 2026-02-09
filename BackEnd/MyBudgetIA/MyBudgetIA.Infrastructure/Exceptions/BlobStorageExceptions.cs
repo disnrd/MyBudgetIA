@@ -1,4 +1,5 @@
 ﻿using Shared.Models;
+
 namespace MyBudgetIA.Infrastructure.Exceptions
 {
     /// <summary>
@@ -6,6 +7,8 @@ namespace MyBudgetIA.Infrastructure.Exceptions
     /// </summary>
     public sealed class BlobStorageException : InfrastructureException
     {
+        private const string DefaultPublicMessage = "Blob storage unavailable.";
+
         /// <summary>
         /// Gets the name of the blob that caused the error, if applicable.
         /// </summary>
@@ -17,20 +20,31 @@ namespace MyBudgetIA.Infrastructure.Exceptions
         public string? AzureErrorCode { get; }
 
         /// <summary>
+        /// Gets the HTTP status code returned by the Azure service, if available.
+        /// </summary>
+        public int? AzureStatusCode { get; }
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="BlobStorageException"/> class.
         /// </summary>
         public BlobStorageException(
             string message,
             string? blobName = null,
             Exception? innerException = null)
-            : base(message, ErrorCodes.BlobStorageError, 503, innerException)
+            : base(
+                publicMessage: DefaultPublicMessage,
+                errorCode: ErrorCodes.BlobStorageError,
+                statusCode: 503,
+                internalMessage: message,
+                innerException: innerException)
         {
             BlobName = blobName;
 
-            //if (innerException is Azure.RequestFailedException azureEx)
-            //{
-            //    AzureErrorCode = azureEx.ErrorCode;
-            //}
+            if (innerException is Azure.RequestFailedException azureEx)
+            {
+                AzureErrorCode = azureEx.ErrorCode;
+                AzureStatusCode = azureEx.Status;
+            }
         }
 
         /// <summary>
@@ -39,10 +53,11 @@ namespace MyBudgetIA.Infrastructure.Exceptions
         public BlobStorageException(
             string message,
             string? blobName,
-            string azureErrorCode,
+            string? azureErrorCode,
+            int? azureStatusCode = null,
             Exception? innerException = null)
             : base(
-                publicMessage: "Blob storage unavailable.",
+                publicMessage: DefaultPublicMessage,
                 errorCode: ErrorCodes.BlobStorageError,
                 statusCode: 503,
                 internalMessage: message,
@@ -50,6 +65,7 @@ namespace MyBudgetIA.Infrastructure.Exceptions
         {
             BlobName = blobName;
             AzureErrorCode = azureErrorCode;
+            AzureStatusCode = azureStatusCode;
         }
     }
 }

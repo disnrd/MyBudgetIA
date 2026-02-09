@@ -1,42 +1,30 @@
 ﻿using FluentValidation;
-using MyBudgetIA.Application.Photo.Dtos;
+using MyBudgetIA.Application.Photo;
 using MyBudgetIA.Domain.Constraints;
 using Shared.Helpers;
 
 namespace MyBudgetIA.Application.Validators.Photo
 {
     /// <summary>
-    /// Validator for <see cref="PhotoUploadDto"/>.
+    /// /// Provides business validation rules for <see cref="IFileUploadRequest"/> instances.
     /// </summary>
-    public class PhotoUploadDtoValidator : AbstractValidator<PhotoUploadDto>
+    public class IFileUploadRequestBusinessValidator : AbstractValidator<IFileUploadRequest>
     {
         /// <summary>
         /// Constructor taking the service(s) that this class depends on.
         /// <para/>Dynamically called by DI.
         /// </summary>
-        public PhotoUploadDtoValidator()
+        public IFileUploadRequestBusinessValidator()
         {
-            RuleFor(x => x.FileName)
-                .NotEmpty()
-                .WithName(nameof(PhotoUploadDto.FileName))
-                .WithMessage(Messages.MustNotBeEmptyProperty);
-
             When(d => !string.IsNullOrWhiteSpace(d.FileName),
                 () =>
                 {
                     RuleFor(x => x.FileName)
-                        .Must(fileName => !string.IsNullOrWhiteSpace(Path.GetExtension(fileName)))
-                            .WithMessage(Messages.MustFileNameHaveExtension)
                         .Must(fileName => PhotoConstraints.IsValidFileName(fileName))
                             .WithMessage(Messages.MustFileNameCharactersValidInBlobContext)
                         .MaximumLength(PhotoConstraints.MaxFileNameLength)
                             .WithMessage(Messages.FileNameCannotExceedMaxLength);
                 });
-
-            RuleFor(d => d.ContentType)
-                .NotEmpty()
-                .WithName(nameof(PhotoUploadDto.ContentType))
-                .WithMessage(Messages.MustNotBeEmptyProperty);
 
             When(d => !string.IsNullOrWhiteSpace(d.ContentType),
                 () =>
@@ -50,31 +38,8 @@ namespace MyBudgetIA.Application.Validators.Photo
                 });
 
             RuleFor(d => d.Length)
-                .GreaterThan(0)
-                .WithMessage(Messages.MustBeGreaterThan)
                 .LessThanOrEqualTo(PhotoConstraints.MaxSizeInBytes)
                     .WithMessage(Messages.FileSizeCannotExceedMax);
-
-            RuleFor(d => d.Content)
-                .NotNull()
-                .WithMessage(Messages.MustNotBeNullProperty);
-
-            When(d => d.Content != null,
-                () =>
-                {
-                    RuleFor(x => x.Content)
-                    .Cascade(CascadeMode.Stop)
-                    .Must(stream => stream.CanRead)
-                        .WithMessage(Messages.MustStreamBeReadable)
-                    .Must(stream => stream.CanSeek)
-                    .WithMessage(Messages.MustStreamBeSeekable)
-                    .Must((dto, content) => AreContentAndFileSameLength(dto, content))
-                        .WithMessage(Messages.MustHaveSameContentAndFileLength);
-                });
-
-            RuleFor(d => d.Extension)
-                .NotEmpty()
-                .WithMessage(Messages.MustNotBeEmptyProperty);
 
             When(d => !string.IsNullOrWhiteSpace(d.Extension),
                 () =>
@@ -86,7 +51,7 @@ namespace MyBudgetIA.Application.Validators.Photo
         }
 
         private static bool IsContentTypeMatchingExtension(
-            PhotoUploadDto candidateEntity,
+            IFileUploadRequest candidateEntity,
             string? _)
         {
             var ext = candidateEntity.Extension.TrimStart('.').ToLowerInvariant();
@@ -94,33 +59,10 @@ namespace MyBudgetIA.Application.Validators.Photo
                 allowed.Contains(candidateEntity.ContentType, StringComparer.InvariantCultureIgnoreCase);
         }
 
-        private static bool AreContentAndFileSameLength(
-            PhotoUploadDto candidateEntity,
-            Stream? _) => candidateEntity.Content.Length == candidateEntity.Length;
-
-
         [ExposedOnlyToUnitTests]
         internal static class Messages
         {
-            public const string MustNotBeEmptyProperty = "'{PropertyName}' can not be empty.";
-
-            public const string MustFileNameHaveExtension = "File name must have an extension.";
-
-            public const string MustFileNameBeUnderMaxLength = "'{PropertyName}' must be {MaxLength} characters max.";
-
-            public const string MustNotBeNullProperty = "'{PropertyName}' can not be null.";
-
-            public const string MustBeGreaterThan = "'{PropertyName}' must be greater than 0.";
-
             public const string MustHaveSameContentTypeAsExtension = "Content type does not match file extension.";
-
-            public const string MustStreamBeReadable = "'{PropertyName}': Stream must be readable.";
-
-            public const string MustStreamBeSeekable = "'{PropertyName}': Stream must be seekable.";
-
-            //public const string MustStreamBeAtBeginning = "'{PropertyName}': Stream must be at the beginning.";
-
-            public const string MustHaveSameContentAndFileLength = "Content stream length does not match file length.";
 
             public const string MustFileNameCharactersValidInBlobContext = "File name contains at least one of the following invalid characters for blob storage " +
                 ": '\"', '/', ':', '|', '<', '>', '*', '?','\x00-','\x1F','\x7F']'";

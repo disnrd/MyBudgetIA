@@ -1,6 +1,10 @@
+using Azure.Identity;
+using Azure.Storage.Blobs;
 using FluentValidation;
+using Microsoft.Extensions.Options;
 using MyBudgetIA.Api.Middlewares;
 using MyBudgetIA.Application;
+using MyBudgetIA.Infrastructure.Configuration;
 using MyBudgetIA.Infrastructure.Extensions;
 using Serilog;
 
@@ -29,7 +33,7 @@ try
     builder.Services.AddValidatorsFromAssemblyContaining<AssemblyMarker>();
 
     // Add services to the container.
-    builder.Services.AddInfrastructure();
+    builder.Services.AddInfrastructure(builder.Configuration);
 
     builder.Services.AddControllers();
     // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -38,7 +42,6 @@ try
     builder.Services.AddSwaggerGen();
 
     builder.Services.AddOpenApi();
-
 
     var app = builder.Build();
 
@@ -69,7 +72,6 @@ try
 }
 catch (Exception ex)
 {
-
     Log.Fatal(ex, "Application terminated unexpectedly during startup");
     Environment.Exit(1);
 }

@@ -23,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Photos\DTOs\" />
     <Folder Include="Photos\Services\" />
   </ItemGroup>
 

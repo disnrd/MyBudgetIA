@@ -16,11 +16,11 @@ namespace MyBudgetIA.Infrastructure.Services
             CancellationToken cancellationToken = default)
         {
             var validator = serviceProvider.GetService<IValidator<T>>();
-            
+
             if (validator is null) return;
-            
+
             var result = await validator.ValidateAsync(instance, cancellationToken);
-            
+
             if (!result.IsValid)
             {
                 var errors = result.Errors
@@ -28,8 +28,8 @@ namespace MyBudgetIA.Infrastructure.Services
                     .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage)
                     .ToArray());
 
-                throw new Application.Exceptions.ValidationException(errors); 
-            } 
+                throw new Application.Exceptions.ValidationException(errors);
+            }
         }
 
         /// <inheritdoc/>
@@ -54,6 +54,30 @@ namespace MyBudgetIA.Infrastructure.Services
             }
 
             return (true, EmptyErrors);
+        }
+
+        /// <inheritdoc/>
+        public async Task ValidateAndThrowAllAsync<T>(
+            T instance,
+            CancellationToken cancellationToken = default)
+        {
+            var validators = serviceProvider.GetServices<IValidator<T>>().ToList();
+
+            if (validators.Count == 0) return; var allErrors = new List<FluentValidation.Results.ValidationFailure>();
+            
+            foreach (var validator in validators)
+            {
+                var result = await validator.ValidateAsync(instance, cancellationToken);
+                
+                if (!result.IsValid) allErrors.AddRange(result.Errors);
+            }
+            
+            if (allErrors.Count > 0)
+            {
+                var grouped = allErrors.GroupBy(e => e.PropertyName).ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
+                
+                throw new Application.Exceptions.ValidationException(grouped);
+            }
         }
     }
 }

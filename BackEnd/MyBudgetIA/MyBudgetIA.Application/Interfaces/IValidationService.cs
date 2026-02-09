@@ -23,6 +23,19 @@
         Task ValidateAndThrowAsync<T>(T instance, CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Asynchronously validates the specified instance and throws an exception if validation fails.
+        /// This methods call all related validators to gather all validation errors.
+        /// </summary>
+        /// <remarks>If validation fails, an exception is thrown containing all validation errors. The
+        /// method does not return a result; it completes successfully only if the instance passes all validation
+        /// rules.</remarks>
+        /// <typeparam name="T">The type of the object to validate.</typeparam>
+        /// <param name="instance">The object to validate. Cannot be null.</param>
+        /// <param name="cancellationToken">A cancellation token that can be used to cancel the validation operation.</param>
+        /// <returns>A task that represents the asynchronous validation operation.</returns>
+        Task ValidateAndThrowAllAsync<T>(T instance, CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Asynchronously attempts to validate the specified instance and returns a result indicating whether
         /// validation succeeded, along with any validation errors.
         /// </summary>

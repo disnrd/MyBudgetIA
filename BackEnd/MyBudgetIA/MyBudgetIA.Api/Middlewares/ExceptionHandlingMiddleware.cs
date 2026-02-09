@@ -154,7 +154,7 @@ namespace MyBudgetIA.Api.Middlewares
             public static class LogMessages
             {
                 public const string UnhandledException_1 = "Unhandled exception occurred: {ExceptionType}, Message: {Message}, StackTrace: {StackTrace}";
-                public const string ValidationError = "Validation failed for request: {@ValidationErrors}";
+                public const string ValidationError = "StreamValidation failed for request: {@ValidationErrors}";
                 public const string ServerError = "Server error [TraceId: {TraceId}]: {Message}";
                 public const string ServerErrorDetails = "Server error [TraceId: {TraceId}]: {ExceptionType} - {Message}";
                 public const string ClientError = "Client error ({StatusCode}) [TraceId: {TraceId}]: {Message}";

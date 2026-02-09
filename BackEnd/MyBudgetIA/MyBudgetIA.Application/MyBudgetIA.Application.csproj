@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     
-    <!-- Désactive CA1873 : nos messages sont centralisés et constants -->
+    <!-- Désactive CA1873 : les messages sont centralisés et constants -->
     <NoWarn>$(NoWarn);CA1873</NoWarn>
     
   </PropertyGroup>

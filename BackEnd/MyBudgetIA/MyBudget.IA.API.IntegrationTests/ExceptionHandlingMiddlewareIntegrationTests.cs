@@ -445,7 +445,7 @@ namespace MyBudgetIA.Api.Tests
         public async Task ExceptionHandlingMiddleware_WithClientError_ShouldLogAsWarning()
         {
             // Arrange
-            const string detailedMessage = "Validation failed";
+            const string detailedMessage = "StreamValidation failed";
             var exception = new ValidationException(
                 new Dictionary<string, string[]> { { "Field", new[] { detailedMessage } } });
 
