@@ -34,7 +34,7 @@ namespace MyBudgetIA.Application.Validators.Photo
                         .WithMessage(Messages.MustHaveSameContentTypeAsExtension)
                         .When(p => !string.IsNullOrWhiteSpace(p.Extension))
                     .Must(ct => PhotoConstraints.AllowedContentTypes.Contains(ct.ToLowerInvariant()))
-                        .WithMessage(Messages.GetMustHaveValidContentTypeMessage());
+                        .WithMessage((_, ct) => Messages.GetMustHaveValidContentTypeMessage(ct));
                 });
 
             RuleFor(d => d.Length)
@@ -46,7 +46,7 @@ namespace MyBudgetIA.Application.Validators.Photo
                 {
                     RuleFor(x => x.Extension)
                     .Must(ext => PhotoConstraints.AllowedExtensions.Contains(ext.ToLowerInvariant()))
-                    .WithMessage(Messages.GetMustHaveValidExtensionMessage());
+                    .WithMessage((_, ct) => Messages.GetMustHaveValidExtensionMessage(ct));
                 });
         }
 
@@ -67,26 +67,26 @@ namespace MyBudgetIA.Application.Validators.Photo
             public const string MustFileNameCharactersValidInBlobContext = "File name contains at least one of the following invalid characters for blob storage " +
                 ": '\"', '/', ':', '|', '<', '>', '*', '?','\x00-','\x1F','\x7F']'";
 
-            public const string MustHaveValidExtensionTemplate = "Extension must be one of: {0}";
+            public const string MustHaveValidExtensionTemplate = "Extension is {0}, must be one of: {1}";
 
             public static readonly string FileSizeCannotExceedMax = $"File size cannot exceed {PhotoConstraints.MaxSizeInBytes}MB";
 
             public static readonly string FileNameCannotExceedMaxLength =
                 $"File name cannot exceed {PhotoConstraints.MaxFileNameLength} characters.";
 
-            public static string GetMustHaveValidExtensionMessage()
-            {
-                return string.Format(MustHaveValidExtensionTemplate,
+            public static string GetMustHaveValidExtensionMessage(string? extension)
+                => string.Format(
+                    MustHaveValidExtensionTemplate,
+                    extension ?? string.Empty,
                     string.Join(", ", PhotoConstraints.AllowedExtensions));
-            }
 
-            public const string MustHaveValidContentTypeTemplate = "Content type must be one of: {0}";
+            public const string MustHaveValidContentTypeTemplate = "Content type is {0}, must be one of: {1}";
 
-            public static string GetMustHaveValidContentTypeMessage()
-            {
-                return string.Format(MustHaveValidContentTypeTemplate,
+            public static string GetMustHaveValidContentTypeMessage(string? contentType)
+                => string.Format(
+                    MustHaveValidContentTypeTemplate,
+                    contentType ?? string.Empty,
                     string.Join(", ", PhotoConstraints.AllowedContentTypes));
-            }
         }
     }
 }

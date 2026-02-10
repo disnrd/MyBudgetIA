@@ -12,6 +12,14 @@
     - updated endpoint `POST /api/photos/upload`:
       - return `PhotoUploadResult`
       - Convert ASP.NET Core IFormFile instances into application abstractions (`IFileUploadRequest`) via `FormFileAdapter`.
+      - 
+- (10/02/2026):
+  - == Docker ==
+    - Created a `Dockerfile` for the API project, enabling containerization of the application for consistent deployment across different environments.
+    - Added a `docker-compose.yml` file to orchestrate multi-container applications, facilitating the setup of dependent services like databases or storage emulators alongside the API.
+  - Changed **PhotoService** method `UploadPhotoAsync`:
+    - instead of throwing a validation error, it now returns a `PhotoUploadResult` indicating the success or failure of the upload. Still have to work on the errors messages
+      sent to the user.
 
 
   == next steps: container, devops, queue storage, function ? retry policies? => stream seekable ?

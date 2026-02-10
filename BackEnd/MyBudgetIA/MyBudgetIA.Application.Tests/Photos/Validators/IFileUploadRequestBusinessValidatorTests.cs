@@ -209,7 +209,7 @@ namespace MyBudgetIA.Application.Tests.Photos.Validators
             {
                 result
                     .ShouldHaveValidationErrorFor(d => d.ContentType)
-                    .WithErrorMessage(Messages.GetMustHaveValidContentTypeMessage());
+                    .WithErrorMessage(Messages.GetMustHaveValidContentTypeMessage(contentType));
             }
         }
 
@@ -273,7 +273,7 @@ namespace MyBudgetIA.Application.Tests.Photos.Validators
             {
                 result
                     .ShouldHaveValidationErrorFor(d => d.Extension)
-                    .WithErrorMessage(Messages.GetMustHaveValidExtensionMessage());
+                    .WithErrorMessage(Messages.GetMustHaveValidExtensionMessage(extension));
             }
         }
 

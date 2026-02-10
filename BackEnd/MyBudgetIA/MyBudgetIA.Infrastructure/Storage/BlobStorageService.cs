@@ -70,7 +70,7 @@ namespace MyBudgetIA.Infrastructure.Storage
                     fileName: request.FileName,
                     trackingId: request.TrackingId,
                     blobName: request.BlobName,
-                    etag: response.Value.ETag.ToString());
+                    etag: response.Value.ETag.ToString().Trim('"'));
             }
             //catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             //{   // consider all implications of a cancellation..

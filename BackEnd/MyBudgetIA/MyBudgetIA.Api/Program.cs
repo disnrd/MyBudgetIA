@@ -21,6 +21,12 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
+    // In containers, listen on HTTP only; ACA terminates TLS at the ingress.
+    builder.WebHost.ConfigureKestrel(options =>
+    {
+        options.AddServerHeader = false;
+    });
+
     // Real Serilog configuration
     builder.Host.UseSerilog((context, services, configuration) =>
        configuration
@@ -42,6 +48,7 @@ try
     builder.Services.AddSwaggerGen();
 
     builder.Services.AddOpenApi();
+    builder.Services.AddHealthChecks();
 
     var app = builder.Build();
 
@@ -65,6 +72,7 @@ try
     app.UseAuthorization();
 
     app.MapControllers();
+    app.MapHealthChecks("/health");
 
     Log.Information("Application started successfully");
     app.Run();

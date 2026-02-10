@@ -37,39 +37,47 @@ namespace MyBudgetIA.Application.Photo
 
             foreach (var photo in photos)
             {
-                await validationService.ValidateAndThrowAllAsync(photo, cancellationToken);
-
-                LogStartingUpload(photo);
-
-                await using var stream = photo.OpenReadStream();
-
-                ValidateStreamOrThrow(photo, stream);
-
-                string trackingId = Guid.NewGuid().ToString("N");
-
-                string blobName = BlobNameBuilder.GenerateUniqueBlobName("photos", photo.FileName, trackingId);
-
-                BlobUploadRequest blobRequest = new(photo.FileName, blobName, stream, photo.ContentType, trackingId);
-
-                BlobUploadResult result = await blobStorageService.UploadFileAsync(blobRequest, cancellationToken);
-
-                if (result.IsSuccess)
+                try
                 {
-                    logger.LogInformation(
-                        Messages.UploadAsync.UploadSuccess_2,
-                        photo.FileName,
-                        blobName);
-                }
-                else
-                {
-                    logger.LogError(
-                        Messages.UploadAsync.UploadError_3,
-                        photo.FileName,
-                        blobName,
-                        result.ErrorMessage);
-                }
+                    // OPTION 1 : no try catch here, let validation exception bubble up and fail the entire request if any photo is invalid
+                    // means no upload, and better validation error details returned to client
+                    await validationService.ValidateAndThrowAllAsync(photo, cancellationToken);
 
-                results.Add(result);
+                    LogStartingUpload(photo);
+
+                    await using var stream = photo.OpenReadStream();
+
+                    ValidateStreamOrThrow(photo, stream);
+
+                    string trackingId = Guid.NewGuid().ToString("N");
+
+                    string blobName = BlobNameBuilder.GenerateUniqueBlobName("photos", photo.FileName, trackingId);
+
+                    BlobUploadRequest blobRequest = new(photo.FileName, blobName, stream, photo.ContentType, trackingId);
+
+                    BlobUploadResult result = await blobStorageService.UploadFileAsync(blobRequest, cancellationToken);
+
+                    if (result.IsSuccess)
+                    {
+                        logger.LogInformation(Messages.UploadAsync.UploadSuccess_2, photo.FileName, blobName);
+                    }
+                    else
+                    {
+                        logger.LogError(Messages.UploadAsync.UploadError_3, photo.FileName, blobName, result.ErrorMessage);
+                    }
+
+                    results.Add(result);
+                }
+                catch (ValidationException ex)
+                {
+                    // OPTION 2: Log validation errors and continue with next photos, returning validation failures in the result
+                    // --> errors returned are not really explicits.. "validation error"
+                    logger.LogWarning(ex, Messages.UploadAsync.ValidationFailed, photo.FileName);
+
+                    results.Add(BlobUploadResult.CreateValidationFailure(
+                        fileName: photo.FileName,
+                        errorMessage: ex.Message));
+                }
             }
 
             return new UploadPhotosResult(results);
@@ -127,6 +135,7 @@ namespace MyBudgetIA.Application.Photo
                 public const string TooManyPhotosProvided_2 = "Too many photos provided. Maximum {MaxPhotosAllowed} photos allowed per request, but {PhotosProvided} were provided.";
                 public const string UploadSuccess_2 = "Successfully uploaded {FileName} as blob {BlobName}.";
                 public const string UploadError_3 = "Failed to upload {FileName} as blob {BlobName}. Error: {ErrorMessage}";
+                public const string ValidationFailed = "Validation failed for {FileName}.";
             }
 
             public static class StreamValidation

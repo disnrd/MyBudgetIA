@@ -1,5 +1,7 @@
 <Solution>
-  <Folder Name="/src/" />
+  <Folder Name="/src/">
+    <File Path=".env" />
+  </Folder>
   <Folder Name="/src/Core/">
     <Project Path="MyBudgetIA.Application/MyBudgetIA.Application.csproj" />
     <Project Path="MyBudgetIA.Domain/MyBudgetIA.Domain.csproj" />

@@ -44,3 +44,7 @@ Thumbs.db
 logs/
 Logs/
 ```
+
+# Env secrets
+.env
+*.env
