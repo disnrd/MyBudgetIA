@@ -6,13 +6,6 @@ variables:
 
 stages:
 
-- script: |
-    echo "Current directory:"
-    pwd
-    echo "Listing files:"
-    ls -R
-  displayName: "Debug workspace"
-
 # ============================================================
 # 1. BUILD + UNIT TESTS + CACHE NUGET
 # ============================================================
@@ -25,6 +18,12 @@ stages:
         vmImage: ubuntu-latest
 
       steps:
+        - script: |
+            echo "Current directory:"
+            pwd echo "Listing files:"
+            ls -R
+          displayName: "Debug workspace"
+
         # --- Cache NuGet ---
         - task: Cache@2
           inputs:
