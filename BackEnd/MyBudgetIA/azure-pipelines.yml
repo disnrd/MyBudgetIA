@@ -81,7 +81,7 @@ stages:
           workingDirectory: $(workingDir)
           displayName: "Start integration environment"
 
-        - script: dotnet test MyBudgetIA.Infrastructure.Tests.csproj --filter "TestCategory=Integration"
+        - script: dotnet test MyBudgetIA.Infrastructure.Tests/MyBudgetIA.Infrastructure.Tests.csproj --filter "TestCategory=Integration"
           workingDirectory: $(workingDir)
           displayName: "Run Integration Tests"
 
