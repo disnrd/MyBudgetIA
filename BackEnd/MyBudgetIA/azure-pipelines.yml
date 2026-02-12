@@ -42,6 +42,9 @@ stages:
           inputs:
             version: '10.0.x'
 
+        - script: cat BackEnd/MyBudgetIA/global.json
+          displayName: "Show global.json"
+
         # --- Restore ---
         - script: dotnet restore
           workingDirectory: $(workingDir)
