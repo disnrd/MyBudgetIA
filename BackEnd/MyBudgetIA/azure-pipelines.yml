@@ -40,7 +40,7 @@ stages:
         # --- Install .NET SDK ---
         - task: UseDotNet@2
           inputs:
-            version: '10.0.x'
+            version: '10.0.102'
 
         - script: cat BackEnd/MyBudgetIA/global.json
           displayName: "Show global.json"
