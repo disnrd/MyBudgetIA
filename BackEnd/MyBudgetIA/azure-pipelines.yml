@@ -107,13 +107,13 @@ stages:
           workingDirectory: $(workingDir)
           displayName: "Build Docker image"
 
-        - script: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --exit-code 1 --severity HIGH,CRITICAL MyBudgetIA:$(Build.BuildId)
+        - script: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --exit-code 1 --severity HIGH,CRITICAL mybudgetia:$(Build.BuildId)
           workingDirectory: $(workingDir)
           displayName: "Scan Docker image with Trivy"
 
         - script: |
             mkdir -p $(Build.ArtifactStagingDirectory)/image
-            docker save MyBudgetIA:$(Build.BuildId) -o $(Build.ArtifactStagingDirectory)/image/MyBudgetIA.tar
+            docker save mybudgetia:$(Build.BuildId) -o $(Build.ArtifactStagingDirectory)/image/mybudgetia.tar
           workingDirectory: $(workingDir)
           displayName: "Export Docker image as tar"
 
