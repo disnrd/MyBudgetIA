@@ -27,7 +27,7 @@ stages:
         # --- Cache NuGet ---
         - task: Cache@2
           inputs:
-            key: 'nuget | "$(Agent.OS)" | **/*.csproj | global.json'
+            key: 'nuget | "$(Agent.OS)" | **/*.csproj | **/global.json'
             restoreKeys: |
               nuget | "$(Agent.OS)"
             path: ~/.nuget/packages
