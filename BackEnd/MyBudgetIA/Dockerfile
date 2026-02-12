@@ -23,7 +23,7 @@ RUN adduser -D -h /home/appuser appuser
 # ============================
 # RUNTIME STAGE (DISTROLESS)
 # ============================
-FROM mcr.microsoft.com/dotnet/aspnet:10.0.103
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.102
 
 WORKDIR /app
 
