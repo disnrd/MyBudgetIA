@@ -34,7 +34,7 @@ stages:
             key: 'nuget | "$(Agent.OS)" | **/*.csproj | **/global.json'
             restoreKeys: |
               nuget | "$(Agent.OS)"
-            path: ~/.nuget/packages
+            path: $(HOME)/.nuget/packages
           displayName: "Cache NuGet packages"
 
         # --- Install .NET SDK ---
