@@ -103,7 +103,7 @@ stages:
         vmImage: ubuntu-latest
 
       steps:
-        - script: docker build -t MyBudgetIA:$(Build.BuildId) .
+        - script: docker build -t mybudgetia:$(Build.BuildId) .
           workingDirectory: $(workingDir)
           displayName: "Build Docker image"
 
