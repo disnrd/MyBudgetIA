@@ -3,7 +3,7 @@
 # ============================
 # BUILD STAGE (non-distroless)
 # ============================
-FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0.102-alpine AS build
 WORKDIR /src
 
 COPY MyBudgetIA.Api/MyBudgetIA.Api.csproj MyBudgetIA.Api/
@@ -23,7 +23,7 @@ RUN adduser -D -h /home/appuser appuser
 # ============================
 # RUNTIME STAGE (DISTROLESS)
 # ============================
-FROM mcr.microsoft.com/dotnet/aspnet:10.0
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.102
 
 WORKDIR /app
 
