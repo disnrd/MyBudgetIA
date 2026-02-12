@@ -1,0 +1,95 @@
+trigger:
+  - master
+
+variables:
+  buildConfiguration: 'Release'
+
+stages:
+
+# ============================================================
+# 1. BUILD + UNIT TESTS + CACHE NUGET
+# ============================================================
+- stage: Build
+  displayName: "Build & Unit Tests"
+  jobs:
+    - job: build
+      displayName: "Build .NET + Unit Tests"
+      pool:
+        vmImage: ubuntu-latest
+
+      steps:
+        # --- Cache NuGet ---
+        - task: Cache@2
+          inputs:
+            key: 'nuget | "$(Agent.OS)" | **/*.csproj | global.json'
+            restoreKeys: |
+              nuget | "$(Agent.OS)"
+            path: ~/.nuget/packages
+          displayName: "Cache NuGet packages"
+
+        - task: UseDotNet@2
+          inputs:
+            version: '10.0.x'
+
+        - script: dotnet restore
+          displayName: "Restore"
+
+        - script: dotnet build --configuration $(buildConfiguration)
+          displayName: "Build"
+
+        - script: dotnet test --configuration $(buildConfiguration) --filter "TestCategory!=Integration"
+          displayName: "Run Unit Tests"
+
+
+# ============================================================
+# 2. INTEGRATION TESTS (docker-compose.integration.yml)
+# ============================================================
+- stage: IntegrationTests
+  displayName: "Integration Tests"
+  dependsOn: Build
+  jobs:
+    - job: integration
+      displayName: "Run Integration Tests"
+      pool:
+        vmImage: ubuntu-latest
+
+      steps:
+        - script: docker compose -f docker-compose.integration.yml up -d
+          displayName: "Start integration environment"
+
+        - script: dotnet test MyBudgetIA.Infrastructure.Tests.csproj --filter "TestCategory=Integration"
+          displayName: "Run Integration Tests"
+
+        - script: docker compose -f docker-compose.integration.yml down
+          displayName: "Cleanup"
+
+
+# ============================================================
+# 3. PACKAGE (BUILD DOCKER + TRIVY + ARTEFACT)
+# ============================================================
+- stage: Package
+  displayName: "Package Docker Image"
+  dependsOn: IntegrationTests
+  jobs:
+    - job: package
+      displayName: "Build Docker Image + Scan + Publish Artifact"
+      pool:
+        vmImage: ubuntu-latest
+
+      steps:
+        - script: docker build -t MyBudgetIA:$(Build.BuildId) .
+          displayName: "Build Docker image"
+
+        - script: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --exit-code 1 --severity HIGH,CRITICAL MyBudgetIA:$(Build.BuildId)
+          displayName: "Scan Docker image with Trivy"
+
+        - script: |
+            mkdir -p $(Build.ArtifactStagingDirectory)/image
+            docker save MyBudgetIA:$(Build.BuildId) -o $(Build.ArtifactStagingDirectory)/image/MyBudgetIA.tar
+          displayName: "Export Docker image as tar"
+
+        - task: PublishBuildArtifacts@1
+          inputs:
+            pathToPublish: "$(Build.ArtifactStagingDirectory)"
+            artifactName: "drop"
+          displayName: "Publish Artifact"

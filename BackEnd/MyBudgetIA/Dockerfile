@@ -14,13 +14,16 @@ RUN dotnet restore MyBudgetIA.Api/MyBudgetIA.Api.csproj
 
 # Copy the rest and publish
 COPY . ./
-RUN dotnet publish MyBudgetIA.Api/MyBudgetIA.Api.csproj -c Release -o /app/publish
+RUN dotnet publish MyBudgetIA.Api/MyBudgetIA.Api.csproj -c Release -o /app/publish --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
 ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
+
+RUN adduser --disabled-password --gecos "" appuser
+USER appuser
 
 COPY --from=build /app/publish ./
 
