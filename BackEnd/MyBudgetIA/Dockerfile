@@ -17,8 +17,8 @@ RUN dotnet restore MyBudgetIA.Api/MyBudgetIA.Api.csproj
 COPY . ./
 RUN dotnet publish MyBudgetIA.Api/MyBudgetIA.Api.csproj -c Release -o /app/publish --no-restore
 
-# Create non-root user (Alpine)
-RUN adduser -D -h /home/appuser appuser
+# Create non-root user (Ubuntu)
+RUN useradd -m -d /home/appuser -s /bin/bash appuser
 
 # ============================
 # RUNTIME STAGE (DISTROLESS)
