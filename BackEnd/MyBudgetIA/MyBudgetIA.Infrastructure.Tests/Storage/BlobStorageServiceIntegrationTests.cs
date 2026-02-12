@@ -96,7 +96,7 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
 
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(result.Etag, Is.EqualTo(props.Value.ETag.ToString()));
+                Assert.That(result.Etag, Is.EqualTo(props.Value.ETag.ToString().Trim('"')));
 
                 Assert.That(props.Value.ContentType, Is.EqualTo(contentType));
                 Assert.That(props.Value.Metadata.ContainsKey("contentType"), Is.True);
