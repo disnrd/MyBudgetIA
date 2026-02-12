@@ -3,6 +3,7 @@ trigger:
 
 variables:
   buildConfiguration: 'Release'
+  workingDir: 'BackEnd/MyBudgetIA'
 
 stages:
 
@@ -18,9 +19,12 @@ stages:
         vmImage: ubuntu-latest
 
       steps:
+
+        # --- Debug workspace ---
         - script: |
             echo "Current directory:"
-            pwd echo "Listing files:"
+            pwd
+            echo "Listing files:"
             ls -R
           displayName: "Debug workspace"
 
@@ -33,17 +37,24 @@ stages:
             path: ~/.nuget/packages
           displayName: "Cache NuGet packages"
 
+        # --- Install .NET SDK ---
         - task: UseDotNet@2
           inputs:
             version: '10.0.x'
 
+        # --- Restore ---
         - script: dotnet restore
+          workingDirectory: $(workingDir)
           displayName: "Restore"
 
+        # --- Build ---
         - script: dotnet build --configuration $(buildConfiguration)
+          workingDirectory: $(workingDir)
           displayName: "Build"
 
+        # --- Unit Tests ---
         - script: dotnet test --configuration $(buildConfiguration) --filter "TestCategory!=Integration"
+          workingDirectory: $(workingDir)
           displayName: "Run Unit Tests"
 
 
@@ -61,12 +72,15 @@ stages:
 
       steps:
         - script: docker compose -f docker-compose.integration.yml up -d
+          workingDirectory: $(workingDir)
           displayName: "Start integration environment"
 
         - script: dotnet test MyBudgetIA.Infrastructure.Tests.csproj --filter "TestCategory=Integration"
+          workingDirectory: $(workingDir)
           displayName: "Run Integration Tests"
 
         - script: docker compose -f docker-compose.integration.yml down
+          workingDirectory: $(workingDir)
           displayName: "Cleanup"
 
 
@@ -84,14 +98,17 @@ stages:
 
       steps:
         - script: docker build -t MyBudgetIA:$(Build.BuildId) .
+          workingDirectory: $(workingDir)
           displayName: "Build Docker image"
 
         - script: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --exit-code 1 --severity HIGH,CRITICAL MyBudgetIA:$(Build.BuildId)
+          workingDirectory: $(workingDir)
           displayName: "Scan Docker image with Trivy"
 
         - script: |
             mkdir -p $(Build.ArtifactStagingDirectory)/image
             docker save MyBudgetIA:$(Build.BuildId) -o $(Build.ArtifactStagingDirectory)/image/MyBudgetIA.tar
+          workingDirectory: $(workingDir)
           displayName: "Export Docker image as tar"
 
         - task: PublishBuildArtifacts@1
