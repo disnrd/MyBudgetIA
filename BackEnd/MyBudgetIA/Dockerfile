@@ -19,20 +19,27 @@ RUN dotnet restore MyBudgetIA.Api/MyBudgetIA.Api.csproj
 COPY . ./
 RUN dotnet publish MyBudgetIA.Api/MyBudgetIA.Api.csproj -c Release -o /app/publish --no-restore
 
+# Create non-root user (possible here because SDK image is NOT distroless)
+RUN adduser -D -h /home/appuser appuser
+
 # ============================
-# RUNTIME STAGE
+# RUNTIME STAGE (DISTROLESS)
 # ============================
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
+
 WORKDIR /app
+
+# Copy passwd so the user created in build stage exists in runtime
+COPY --from=build /etc/passwd /etc/passwd
+
+# Switch to non-root user
+USER appuser
+
+# Copy published output
+COPY --from=build /app/publish ./
 
 ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
-
-# Create non-root user (Alpine syntax)
-RUN adduser -D appuser
-USER appuser
-
-COPY --from=build /app/publish ./
 
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "MyBudgetIA.Api.dll"]
