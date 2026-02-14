@@ -19,5 +19,14 @@ namespace MyBudgetIA.Application.Photo
         Task<UploadPhotosResult> UploadPhotoAsync(
             IReadOnlyCollection<IFileUploadRequest> photos,
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Asynchronously retrieves the photo blob associated with the specified blob name.
+        /// </summary>
+        /// <param name="blobName">The name of the blob to retrieve. This parameter cannot be null or empty.</param>
+        /// <param name="ct">A cancellation token that can be used to cancel the operation.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains a <see cref="DownloadedPhotoDto"/> object with
+        /// the retrieved photo blob data.</returns>
+        Task<DownloadedPhotoDto> DownloadPhotoAsync(string blobName, CancellationToken ct);
     }
 }

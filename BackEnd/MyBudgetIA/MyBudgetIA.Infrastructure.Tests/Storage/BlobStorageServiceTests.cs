@@ -1,11 +1,16 @@
 ﻿using Azure;
+using Azure.Core;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using Grpc.Core;
+using Humanizer;
+using k8s.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using MyBudgetIA.Application.Photo.Dtos;
 using MyBudgetIA.Infrastructure.Configuration;
+using MyBudgetIA.Infrastructure.Exceptions;
 using MyBudgetIA.Infrastructure.Storage;
 using MyBudgetIA.Infrastructure.Storage.Abstractions;
 using Shared.Models;
@@ -237,8 +242,9 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
         }
 
         [TestCase(403, "", ErrorCodes.BlobUnauthorized)]
-        [TestCase(404, "", ErrorCodes.BlobContainerNotFound)]
-        [TestCase(405, "ContainerNotFound", ErrorCodes.BlobContainerNotFound)]
+        [TestCase(404, "ContainerNotFound", ErrorCodes.BlobContainerNotFound)]
+        [TestCase(404, "BlobNotFound", ErrorCodes.BlobNotFound)]
+        [TestCase(404, "", ErrorCodes.BlobNotFound)]
         [TestCase(409, "", ErrorCodes.BlobAlreadyExists)]
         [TestCase(410, "BlobAlreadyExists", ErrorCodes.BlobAlreadyExists)]
         [TestCase(429, "", ErrorCodes.BlobThrottled)]
@@ -285,6 +291,234 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
                 It.IsAny<BlobUploadOptions>(),
                 It.IsAny<CancellationToken>()),
                 Times.Once);
+        }
+
+        #endregion
+
+        #region DownloadBlobAsync
+
+        [Test]
+        public async Task BlobStorageService_DownloadBlobAsync_EmptyBlobName_ShouldThrowException()
+        {
+            // Arrange
+            var blobName = string.Empty;
+
+            // Act
+            var ex = Assert.ThrowsAsync<BlobStorageException>(async () =>
+                await service.DownloadBlobAsync(blobName, CancellationToken.None));
+
+            // Assert
+            Assert.That(ex.Message, Is.EqualTo(StorageErrorMessages.BlobNameValidationFailed));
+        }
+
+        [Test]
+        public async Task BlobStorageService_DownloadBlobAsync_SuccessfullDownload_ShouldReturnFullBlobDownloadData()
+        {
+            // Arrange
+            var blobName = "test-blob";
+            var content = "Hello, World!";
+            var contentType = "text/plain";
+            var contentLength = content.Length;
+            var fileName = "test.txt";
+            var trackingId = "tracking-123";
+            var metadata = new Dictionary<string, string>
+            {
+                { nameof(BlobUploadRequest.FileName), fileName },
+                { nameof(BlobUploadRequest.TrackingId), trackingId }
+            };
+
+            var blobDownloadDetails = BlobsModelFactory.BlobDownloadDetails(
+                contentType: contentType,
+                contentLength: contentLength,
+                metadata: metadata);
+
+            var blobDownloadStreamingResult = BlobsModelFactory.BlobDownloadStreamingResult(
+                content: new MemoryStream(System.Text.Encoding.UTF8.GetBytes(content)),
+                details: blobDownloadDetails);
+
+            var response = Response.FromValue(blobDownloadStreamingResult, Mock.Of<Response>());
+
+            mockBlobClient
+                .Setup(b => b.DownloadStreamingAsync(
+                    It.IsAny<BlobDownloadOptions>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(response)
+                .Verifiable();
+
+            // Act
+            var result = await service.DownloadBlobAsync(blobName, CancellationToken.None);
+
+            // Assert
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(result, Is.Not.Null);
+                Assert.That(result.ContentType, Is.EqualTo(contentType));
+                Assert.That(result.ContentLength, Is.EqualTo(contentLength));
+                Assert.That(result.FileName, Is.EqualTo(fileName));
+                Assert.That(result.TrackingId, Is.EqualTo(trackingId));
+                Assert.That(result.Metadata, Is.EqualTo(metadata));
+
+                using var reader = new StreamReader(result.Content);
+                Assert.That(reader.ReadToEnd(), Is.EqualTo(content));
+
+                var startLog = logger.Entries.Single(e => e.EventId.Id == 6);
+                Assert.That(startLog.Level, Is.EqualTo(LogLevel.Debug));
+                Assert.That(TestLogger<BlobStorageService>.GetStateValue(startLog, "BlobName"), Is.EqualTo(blobName));
+
+                var successLog = logger.Entries.Single(e => e.EventId.Id == 8);
+                Assert.That(successLog.Level, Is.EqualTo(LogLevel.Information));
+                Assert.That(TestLogger<BlobStorageService>.GetStateValue(successLog, "BlobName"), Is.EqualTo(blobName));
+
+                mockBlobClient.Verify(b => b.DownloadStreamingAsync(
+                    It.IsAny<BlobDownloadOptions>(),
+                    It.IsAny<CancellationToken>()),
+                    Times.Once);
+            }
+        }
+
+        [Test]
+        public async Task BlobStorageService_DownloadBlobAsync_SuccessfullDownload_ShouldReturnBlobDownloadData()
+        {
+            // Arrange
+            var blobName = "test-blob";
+            var content = "Hello, World!";
+            var contentType = "text/plain";
+            var contentLength = content.Length;
+            var metadata = new Dictionary<string, string>();
+
+            var blobDownloadDetails = BlobsModelFactory.BlobDownloadDetails(
+                contentType: contentType,
+                contentLength: contentLength,
+                metadata: metadata);
+
+            var blobDownloadStreamingResult = BlobsModelFactory.BlobDownloadStreamingResult(
+                content: new MemoryStream(System.Text.Encoding.UTF8.GetBytes(content)),
+                details: blobDownloadDetails);
+
+            var response = Response.FromValue(blobDownloadStreamingResult, Mock.Of<Response>());
+
+            mockBlobClient
+                .Setup(b => b.DownloadStreamingAsync(
+                    It.IsAny<BlobDownloadOptions>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(response)
+                .Verifiable();
+
+            // Act
+            var result = await service.DownloadBlobAsync(blobName, CancellationToken.None);
+
+            // Assert
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(result, Is.Not.Null);
+                Assert.That(result.ContentType, Is.EqualTo(contentType));
+                Assert.That(result.ContentLength, Is.EqualTo(contentLength));
+                Assert.That(result.FileName, Is.Null);
+                Assert.That(result.TrackingId, Is.Null);
+                Assert.That(result.Metadata, Is.EqualTo(metadata));
+
+                using var reader = new StreamReader(result.Content);
+                Assert.That(reader.ReadToEnd(), Is.EqualTo(content));
+
+                var startLog = logger.Entries.Single(e => e.EventId.Id == 6);
+                Assert.That(startLog.Level, Is.EqualTo(LogLevel.Debug));
+                Assert.That(TestLogger<BlobStorageService>.GetStateValue(startLog, "BlobName"), Is.EqualTo(blobName));
+
+                var successLog = logger.Entries.Single(e => e.EventId.Id == 8);
+                Assert.That(successLog.Level, Is.EqualTo(LogLevel.Information));
+                Assert.That(TestLogger<BlobStorageService>.GetStateValue(successLog, "BlobName"), Is.EqualTo(blobName));
+
+                mockBlobClient.Verify(b => b.DownloadStreamingAsync(
+                    It.IsAny<BlobDownloadOptions>(),
+                    It.IsAny<CancellationToken>()),
+                    Times.Once);
+            }
+        }
+
+        [TestCase(404, ErrorCodes.BlobNotFound)]
+        [TestCase(450, ErrorCodes.BlobDownloadFailed)]
+        public async Task BlobStorageService_DownloadBlobAsync_RequestFailedException_ShouldThrowBlobStorageException_450(
+            int status,
+            string errorCode)
+        {
+            // Arrange
+            var blobName = "test-blob";
+            var statusCode = status;
+
+            mockBlobClient
+                .Setup(b => b.DownloadStreamingAsync(
+                    It.IsAny<BlobDownloadOptions>(),
+                    It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new RequestFailedException(
+                    status: statusCode,
+                    errorCode: "BlobNotFound",
+                    message: "Blob not found",
+                    innerException: null))
+                .Verifiable();
+
+            // Act
+            var ex = Assert.ThrowsAsync<BlobStorageException>(async () =>
+                await service.DownloadBlobAsync(blobName, CancellationToken.None));
+
+            // Assert
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(ex.Message, Is.EqualTo(StorageErrorMessages.AzureDownloadFailed));
+                Assert.That(ex.ErrorCode, Is.EqualTo(errorCode));
+
+                var errorLog = logger.Entries.Single(e => e.EventId.Id == 7);
+                Assert.That(errorLog.Level, Is.EqualTo(LogLevel.Error));
+                Assert.That(TestLogger<BlobStorageService>.GetStateValue(errorLog, "BlobName"), Is.EqualTo(blobName));
+                Assert.That(TestLogger<BlobStorageService>.GetStateValue(errorLog, "Status"), Is.EqualTo(statusCode));
+                Assert.That(TestLogger<BlobStorageService>.GetStateValue(errorLog, "ErrorCode"), Is.EqualTo(errorCode));
+
+                mockBlobClient.Verify(b => b.DownloadStreamingAsync(
+                    It.IsAny<BlobDownloadOptions>(),
+                    It.IsAny<CancellationToken>()),
+                    Times.Once);
+            }
+        }
+
+        [Test]
+        public async Task BlobStorageService_DownloadBlobAsync_RequestFailedException_ShouldThrowBlobStorageException()
+        {
+            // Arrange
+            var blobName = "test-blob";
+            var statusCode = 404;
+
+            mockBlobClient
+                .Setup(b => b.DownloadStreamingAsync(
+                    It.IsAny<BlobDownloadOptions>(),
+                    It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new RequestFailedException(
+                    status: statusCode,
+                    errorCode: "BlobNotFound",
+                    message: "Blob not found",
+                    innerException: null))
+                .Verifiable();
+
+            // Act
+            var ex = Assert.ThrowsAsync<BlobStorageException>(async () =>
+                await service.DownloadBlobAsync(blobName, CancellationToken.None));
+
+            // Assert
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(ex.Message, Is.EqualTo(StorageErrorMessages.AzureDownloadFailed));
+                Assert.That(ex.ErrorCode, Is.EqualTo(ErrorCodes.BlobNotFound));
+
+                var errorLog = logger.Entries.Single(e => e.EventId.Id == 7);
+                Assert.That(errorLog.Level, Is.EqualTo(LogLevel.Error));
+                Assert.That(TestLogger<BlobStorageService>.GetStateValue(errorLog, "BlobName"), Is.EqualTo(blobName));
+                Assert.That(TestLogger<BlobStorageService>.GetStateValue(errorLog, "Status"), Is.EqualTo(statusCode));
+                Assert.That(TestLogger<BlobStorageService>.GetStateValue(errorLog, "ErrorCode"), Is.EqualTo(ErrorCodes.BlobNotFound));
+
+                mockBlobClient.Verify(b => b.DownloadStreamingAsync(
+                    It.IsAny<BlobDownloadOptions>(),
+                    It.IsAny<CancellationToken>()),
+                    Times.Once);
+            }
+
         }
 
         #endregion

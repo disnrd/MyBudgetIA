@@ -478,7 +478,8 @@ namespace MyBudgetIA.Api.Tests
 
             var ex = new BlobStorageException(
                 blobName: "testblob.txt",
-                azureErrorCode: "500",
+                azureStatusCode: 500,
+                azureErrorCode: ErrorCodes.BlobUnavailable,
                 message: message);
 
             Task next(HttpContext ctx) => throw ex;
@@ -488,11 +489,11 @@ namespace MyBudgetIA.Api.Tests
 
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(_context.Response.StatusCode, Is.EqualTo(503));
+                Assert.That(_context.Response.StatusCode, Is.EqualTo(500));
                 var response = await GetResponseFromContext();
                 Assert.That(response.Message, Is.EqualTo(message));
                 Assert.That(response.Errors, Has.Length.EqualTo(1));
-                Assert.That(response.Errors[0].Code, Is.EqualTo(ErrorCodes.BlobStorageError));
+                Assert.That(response.Errors[0].Code, Is.EqualTo(ErrorCodes.BlobUnavailable));
                 Assert.That(response.Errors[0].Message, Is.EqualTo(message));
             }
         }

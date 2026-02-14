@@ -20,10 +20,11 @@ namespace MyBudgetIA.Infrastructure.Storage
         /// error codes for consistent error handling. The mapping covers common error scenarios such as blob already
         /// exists, container not found, unauthorized access, throttling, and service unavailability.</remarks>
         /// <param name="ex">The exception containing the Azure Blob Storage error information to be mapped. Cannot be null.</param>
+        /// <param name="operationType">The type of blob operation being performed (e.g., upload, download) that may influence the error code mapping. Cannot be null.</param>
         /// <returns>A string representing the mapped application error code corresponding to the Azure Blob Storage error.
         /// Returns a specific error code for common error conditions, or a general error code if the error does not
         /// match known cases.</returns>
-        public static string MapAzureBlobErrorCode(RequestFailedException ex)
+        public static string  MapAzureBlobErrorCode(RequestFailedException ex, BlobOperationType operationType)
         {
             if (ex.Status == 409 || string.Equals(ex.ErrorCode, "BlobAlreadyExists", StringComparison.OrdinalIgnoreCase))
             {
@@ -32,7 +33,12 @@ namespace MyBudgetIA.Infrastructure.Storage
 
             if (ex.Status == 404 || string.Equals(ex.ErrorCode, "ContainerNotFound", StringComparison.OrdinalIgnoreCase))
             {
-                return ErrorCodes.BlobContainerNotFound;
+                return ex.ErrorCode switch
+                {
+                    "ContainerNotFound" => ErrorCodes.BlobContainerNotFound,
+                    "BlobNotFound" => ErrorCodes.BlobNotFound,
+                    _ => ErrorCodes.BlobNotFound
+                };
             }
 
             if (ex.Status is 401 or 403)
@@ -50,7 +56,13 @@ namespace MyBudgetIA.Infrastructure.Storage
                 return ErrorCodes.BlobUnavailable;
             }
 
-            return ErrorCodes.BlobUploadFailed;
+            return operationType switch
+            {
+                BlobOperationType.Upload => ErrorCodes.BlobUploadFailed,
+                BlobOperationType.Download => ErrorCodes.BlobDownloadFailed,
+
+                _ => ErrorCodes.BlobOperationFailed
+            };
         }
     }
 }

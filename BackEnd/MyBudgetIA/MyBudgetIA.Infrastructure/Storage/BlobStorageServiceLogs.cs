@@ -23,9 +23,6 @@ namespace MyBudgetIA.Infrastructure.Storage
         /// <summary>
         /// Logs an informational message indicating that a blob upload request validation has failed.
         /// </summary>
-        /// <remarks>This method is intended for use in scenarios where blob upload requests do not meet
-        /// validation requirements. The log entry is written at the Information level and can be used for auditing or
-        /// troubleshooting failed upload attempts.</remarks>
         /// <param name="logger">The logger instance used to record the validation failure event.</param>
         [LoggerMessage(EventId = 2, Level = LogLevel.Warning, Message = "Blob upload request validation failed.")]
         public static partial void LogFailedBlobRequestValidation(this ILogger logger);
@@ -39,7 +36,7 @@ namespace MyBudgetIA.Infrastructure.Storage
         /// <param name="trackingId">The tracking identifier associated with the upload operation.</param>
         /// <param name="containerName">The name of the container to which the blob was uploaded.</param>
         [LoggerMessage(EventId = 3, Level = LogLevel.Information, Message = "Succesfully uploade blob {BlobName} with id {TrackingId} to container {ContainerName}.")]
-        public static partial void LogSuccessUploadBlob(this ILogger logger, string blobName, string trackingId, string containerName);
+        public static partial void LogSuccessBlobUpload(this ILogger logger, string blobName, string trackingId, string containerName);
 
         /// <summary>
         /// Logs an informational message indicating that an Azure Blob upload operation has failed, including the
@@ -59,6 +56,34 @@ namespace MyBudgetIA.Infrastructure.Storage
         /// <param name="blobName">The name of the blob for which the upload failed. Cannot be null.</param>
         [LoggerMessage(EventId = 5, Level = LogLevel.Error, Message = "Unexpected blob upload failure. BlobName: {BlobName}.")]
         public static partial void LogAzureBlobUploadUnexpectedError(this ILogger logger, string blobName);
+
+        /// <summary>
+        /// Logs a debug message indicating that the download of a blob has started.
+        /// </summary>
+        /// <param name="logger">The logger instance used to record the debug message.</param>
+        /// <param name="blobName">The name of the blob for which the download operation has started.</param>
+        [LoggerMessage(EventId = 6, Level = LogLevel.Debug, Message = "Started downlading blob {BlobName}.")]
+        public static partial void LogStartedDownloadingBlob(this ILogger logger, string blobName);
+
+        /// <summary>
+        /// Logs an error message indicating that an Azure Blob download operation has failed.
+        /// </summary>
+        /// <param name="logger">The logger instance used to record the error message.</param>
+        /// <param name="blobName">The name of the Azure Blob that failed to download.</param>
+        /// <param name="status">The HTTP status code returned by the failed download operation.</param>
+        /// <param name="errorCode">The error code associated with the download failure, if available.</param>
+        [LoggerMessage(EventId = 7, Level = LogLevel.Error, Message = "Azure Blob download failed for blob {BlobName}. Status={Status}, ErrorCode={ErrorCode}.")]
+        public static partial void LogAzureBlobDownloadError(this ILogger logger, string blobName, int status, string errorCode);
+
+        /// <summary>
+        /// Logs an informational message indicating that a blob was successfully downloaded from the specified
+        /// container.
+        /// </summary>
+        /// <param name="logger">The logger instance used to record the success message.</param>
+        /// <param name="blobName">The name of the blob that was downloaded.</param>
+        /// <param name="containerName">The name of the container from which the blob was downloaded.</param>
+        [LoggerMessage(EventId = 8, Level = LogLevel.Information, Message = "Succesfully downloaded blob {BlobName}  from container {ContainerName}.")]
+        public static partial void LogSuccessBlobDownload(this ILogger logger, string blobName, string containerName);
 
     }
 }

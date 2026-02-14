@@ -25,6 +25,10 @@
   - == DevOps Pipeline ==
     - Created a `azure-pipelines.yml` file to define the CI/CD pipeline for the project, automating the build, test, and deployment processes.
 
+- (14/02/2026):
+  - Updated **BlobStorageService**" with method `DownloadBlobAsync`.
+  - Added REST API endpoint `GetPhotoBlob{blobName}` in **PhotosController** to allow downloading photos from blob storage.
+
 
   == next steps: container, devops, queue storage, function ? retry policies? => stream seekable ?
 dont forget to uncomment integration tests for blob storage and queue storage as they need azurite storage emulator or actual azure storage account to run,

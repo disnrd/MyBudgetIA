@@ -1,4 +1,5 @@
 ﻿using Azure;
+using Azure.Core;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
@@ -6,8 +7,10 @@ using Microsoft.Extensions.Options;
 using MyBudgetIA.Application.Interfaces;
 using MyBudgetIA.Application.Photo.Dtos;
 using MyBudgetIA.Infrastructure.Configuration;
+using MyBudgetIA.Infrastructure.Exceptions;
 using MyBudgetIA.Infrastructure.Storage.Abstractions;
 using Shared.Models;
+using Shared.Storage.DTOS;
 
 namespace MyBudgetIA.Infrastructure.Storage
 {
@@ -34,6 +37,8 @@ namespace MyBudgetIA.Infrastructure.Storage
             this.logger = logger;
         }
 
+        #region UploadFileAsync
+
         /// <inheritdoc/>
         public async Task<BlobUploadResult> UploadFileAsync(
             BlobUploadRequest request,
@@ -51,8 +56,9 @@ namespace MyBudgetIA.Infrastructure.Storage
 
             BlobUploadOptions uploadOptions = new()
             {
+                // add filename to metadata..
                 HttpHeaders = new BlobHttpHeaders { ContentType = request.ContentType },
-                Metadata = BlobMetadata.Create(request.ContentType, request.TrackingId, request.CreatedAt),
+                Metadata = BlobMetadata.Create(request.ContentType, request.TrackingId, request.CreatedAt), // <-- contentType deja deans headers, utilité pour recherche?
                 Conditions = new BlobRequestConditions
                 {
                     // avoid overwriting existing blobs
@@ -64,7 +70,7 @@ namespace MyBudgetIA.Infrastructure.Storage
             {
                 var response = await blob.UploadAsync(request.Stream, uploadOptions, cancellationToken);
 
-                logger.LogSuccessUploadBlob(request.BlobName, request.TrackingId, container.Name);
+                logger.LogSuccessBlobUpload(request.BlobName, request.TrackingId, container.Name);
 
                 return BlobUploadResult.CreateSuccess(
                     fileName: request.FileName,
@@ -78,7 +84,7 @@ namespace MyBudgetIA.Infrastructure.Storage
             //}
             catch (RequestFailedException ex)
             {
-                var errorCode = AzureBlobErrorCodes.MapAzureBlobErrorCode(ex);
+                var errorCode = AzureBlobErrorCodes.MapAzureBlobErrorCode(ex, BlobOperationType.Upload);
 
                 logger.LogAzureBlobUploadError(request.BlobName, ex.Status, errorCode);
 
@@ -86,7 +92,7 @@ namespace MyBudgetIA.Infrastructure.Storage
                     fileName: request.FileName,
                     trackingId: request.TrackingId,
                     blobName: request.BlobName,
-                    errorMessage:StorageErrorMessages.AzureBlobUploadFailed,
+                    errorMessage: StorageErrorMessages.AzureBlobUploadFailed,
                     errorCode: errorCode);
             }
             catch (Exception)
@@ -134,5 +140,62 @@ namespace MyBudgetIA.Infrastructure.Storage
             failure = default!;
             return true;
         }
+
+        #endregion
+
+        #region DownloadBlobAsync
+
+        /// <inheritdoc/>
+        public async Task<BlobDownloadData> DownloadBlobAsync(string blobName, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(blobName))
+            {
+                throw new BlobStorageException(
+                    StorageErrorMessages.BlobNameValidationFailed,
+                    nameof(blobName),
+                    ErrorCodes.BlobStorageValidationError,
+                    400);
+            }
+
+            logger.LogStartedDownloadingBlob(blobName);
+
+            try
+            {
+
+                var blobClient = container.GetBlobClient(blobName);
+
+                var blobResult = await blobClient.DownloadStreamingAsync(null, ct);
+
+                logger.LogSuccessBlobDownload(blobName, container.Name);
+
+                return new BlobDownloadData
+                {
+                    Content = blobResult.Value.Content,
+                    ContentType = blobResult.Value.Details.ContentType ?? "application/octet-stream",
+                    ContentLength = blobResult.Value.Details.ContentLength,
+                    FileName = GetMetadataValue(blobResult.Value.Details.Metadata, nameof(BlobDownloadData.FileName)),
+                    // trackingId est il un concept métier d'audit/tracing..domain?..
+                    TrackingId = GetMetadataValue(blobResult.Value.Details.Metadata, nameof(BlobDownloadData.TrackingId)),
+                    Metadata = blobResult.Value.Details.Metadata
+                };
+
+            }
+            catch (RequestFailedException ex)
+            {
+                var errorCode = AzureBlobErrorCodes.MapAzureBlobErrorCode(ex, BlobOperationType.Download);
+                logger.LogAzureBlobDownloadError(blobName, ex.Status, errorCode);
+
+                throw new BlobStorageException(StorageErrorMessages.AzureDownloadFailed, blobName, errorCode, ex.Status);
+            }
+        }
+
+        private static string? GetMetadataValue(
+            IDictionary<string, string> metadata,
+            string key)
+        {
+            return metadata.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value) ? value : null;
+        }
+
+        #endregion
     }
 }

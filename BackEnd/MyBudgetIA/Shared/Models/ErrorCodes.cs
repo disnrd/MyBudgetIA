@@ -9,6 +9,8 @@
 
         public const string BadRequest = "BAD_REQUEST";
 
+        public const string NotFound = "NOT_FOUND";
+
         public const string MaxPhotoCountExceeded = "MAX_PHOTO_COUNT_EXCEEDED";
 
         // INFRA
@@ -29,5 +31,12 @@
 
         public const string BlobValidationFailed = "BLOB_VALIDATION_FAILED";
 
+        public const string BlobNotFound = "BLOB_NOT_FOUND";
+
+        public const string BlobDownloadFailed = "BLOB_DOWNLOAD_FAILED";
+
+        public const string BlobOperationFailed = "BLOB_OPERATION_FAILED";
+
+        public const string BlobStorageValidationError = "BLOB_STORAGE_VALIDATION_ERROR";
     }
 }

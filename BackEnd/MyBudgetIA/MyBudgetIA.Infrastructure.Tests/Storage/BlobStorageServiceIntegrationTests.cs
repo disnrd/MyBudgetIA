@@ -1,10 +1,14 @@
-﻿using Azure.Storage.Blobs;
+﻿using Azure;
+using Azure.Core;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using MyBudgetIA.Application.Photo.Dtos;
 using MyBudgetIA.Infrastructure.Configuration;
 using MyBudgetIA.Infrastructure.Storage;
 using MyBudgetIA.Infrastructure.Storage.Abstractions;
+using System.Globalization;
 
 namespace MyBudgetIA.Infrastructure.Tests.Storage
 {
@@ -55,6 +59,8 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
         }
 
         #endregion
+
+        #region UploadFileAsync
 
         [Test]
         public async Task BlobStorageService_UploadFileAsync_ShouldUpload_AndSetHeaders_AndMetadata()
@@ -140,5 +146,81 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
                 Assert.That(second.ErrorMessage, Is.EqualTo(StorageErrorMessages.AzureBlobUploadFailed));
             }
         }
+
+        #endregion
+
+        #region DownloadFileAsync
+
+        [Test]
+        public async Task BlobStorageService_DownloadFileAsync_ShouldDownloadUploadedBlob()
+        {
+            // Arrange
+            //var fileName = "logo.txt";
+            var blobName = $"photos/{Guid.NewGuid():N}.txt";
+            var content = "content";
+            var contentType = "image/jpeg";
+            var trackingId = Guid.NewGuid().ToString("N");
+            var createdAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            await using var uploadStream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(content));
+
+            var blobClient = containerClient.GetBlobClient(blobName);
+
+            BlobUploadOptions uploadOptions = new()
+            {
+                HttpHeaders = new BlobHttpHeaders { ContentType = contentType },
+                Metadata = BlobMetadata.Create(contentType, trackingId, createdAt),
+                Conditions = new BlobRequestConditions
+                {
+                    // avoid overwriting existing blobs
+                    IfNoneMatch = ETag.All
+                }
+            };
+            var uploadResult = await blobClient.UploadAsync(uploadStream, uploadOptions, CancellationToken.None);
+
+            Assert.That(uploadResult.Value.ETag, Is.Not.Default, "Failed to upload blob for download test");
+
+            // Act
+            var downloadResult = await blobStorageService.DownloadBlobAsync(blobName, CancellationToken.None);
+
+            // Assert
+            using (Assert.EnterMultipleScope())
+            {
+                //Assert.That(downloadResult.FileName, Is.EqualTo(fileName);
+                Assert.That(downloadResult, Is.Not.Null);
+                Assert.That(downloadResult.ContentType, Is.EqualTo(contentType));
+                using var reader = new StreamReader(downloadResult.Content);
+                var downloadedContent = await reader.ReadToEndAsync();
+                Assert.That(downloadedContent, Is.EqualTo(content));
+                Assert.That(downloadResult.Metadata, Is.Not.Null);
+                Assert.That(downloadResult.Metadata.ContainsKey("contentType"), Is.True);
+                Assert.That(downloadResult.Metadata["contentType"], Is.EqualTo(contentType));
+                Assert.That(downloadResult.Metadata.ContainsKey("trackingId"), Is.True);
+                Assert.That(downloadResult.Metadata["trackingId"], Is.EqualTo(trackingId));
+                Assert.That(downloadResult.Metadata.ContainsKey("createdAtUtc"), Is.True);
+                var parsedCreatedAt = DateTime.Parse(downloadResult.Metadata["createdAtUtc"], null, DateTimeStyles.RoundtripKind);
+                Assert.That(parsedCreatedAt, Is.EqualTo(createdAt).Within(TimeSpan.FromSeconds(1)));
+            }
+        }
+
+        [Test]
+        public async Task BlobStorageService_DownloadBlobAsync_BlobWithoutMetadata_ShouldReturnNullFields()
+        {
+            // Arrange
+            var blobName = $"photos/{Guid.NewGuid():N}.txt";
+            var content = "no metadata";
+            await containerClient.UploadBlobAsync(blobName, new MemoryStream(System.Text.Encoding.UTF8.GetBytes(content)));
+
+            // Act
+            var result = await blobStorageService.DownloadBlobAsync(blobName, CancellationToken.None);
+
+            // Assert
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(result.FileName, Is.Null);
+                Assert.That(result.TrackingId, Is.Null);
+            }
+        }
+
+        #endregion
     }
 }

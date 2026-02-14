@@ -5,6 +5,8 @@ using MyBudgetIA.Application.Interfaces;
 using MyBudgetIA.Application.Photo.Dtos;
 using MyBudgetIA.Domain.Constraints;
 using Shared.Helpers;
+using Shared.Models;
+using System.Reflection.Metadata;
 
 namespace MyBudgetIA.Application.Photo
 {
@@ -14,19 +16,19 @@ namespace MyBudgetIA.Application.Photo
         IBlobStorageService blobStorageService,
         ILogger<PhotoService> logger) : IPhotoService
     {
-        #region UploadAsync
+        #region UploadPhotoAsync
 
         /// <inheritdoc/>
         public async Task<UploadPhotosResult> UploadPhotoAsync(
             IReadOnlyCollection<IFileUploadRequest> photos,
             CancellationToken cancellationToken = default)
         {
-            logger.LogInformation(Messages.UploadAsync.Start_Uploading);
+            logger.LogInformation(Messages.UploadPhotoAsync.Start_Uploading);
 
             if (photos.Count > PhotoConstraints.MaxPhotosPerRequest)
             {
                 logger.LogError(
-                    Messages.UploadAsync.TooManyPhotosProvided_2,
+                    Messages.UploadPhotoAsync.TooManyPhotosProvided_2,
                     PhotoConstraints.MaxPhotosPerRequest,
                     photos.Count);
 
@@ -59,11 +61,11 @@ namespace MyBudgetIA.Application.Photo
 
                     if (result.IsSuccess)
                     {
-                        logger.LogInformation(Messages.UploadAsync.UploadSuccess_2, photo.FileName, blobName);
+                        logger.LogInformation(Messages.UploadPhotoAsync.UploadSuccess_2, photo.FileName, blobName);
                     }
                     else
                     {
-                        logger.LogError(Messages.UploadAsync.UploadError_3, photo.FileName, blobName, result.ErrorMessage);
+                        logger.LogError(Messages.UploadPhotoAsync.UploadError_3, photo.FileName, blobName, result.ErrorMessage);
                     }
 
                     results.Add(result);
@@ -72,7 +74,7 @@ namespace MyBudgetIA.Application.Photo
                 {
                     // OPTION 2: Log validation errors and continue with next photos, returning validation failures in the result
                     // --> errors returned are not really explicits.. "validation error"
-                    logger.LogWarning(ex, Messages.UploadAsync.ValidationFailed, photo.FileName);
+                    logger.LogWarning(ex, Messages.UploadPhotoAsync.ValidationFailed, photo.FileName);
 
                     results.Add(BlobUploadResult.CreateValidationFailure(
                         fileName: photo.FileName,
@@ -86,7 +88,7 @@ namespace MyBudgetIA.Application.Photo
         private void LogStartingUpload(IFileUploadRequest photo)
         {
             logger.LogInformation(
-                Messages.UploadAsync.Log_Creating_2,
+                Messages.UploadPhotoAsync.Log_Creating_2,
                 nameof(IFileUploadRequest),
                 photo.FileName);
         }
@@ -125,10 +127,33 @@ namespace MyBudgetIA.Application.Photo
 
         #endregion
 
+        #region DownloadPhotoAsync
+
+        /// <inheritdoc/>
+        public async Task<DownloadedPhotoDto> DownloadPhotoAsync(
+            string blobName,
+            CancellationToken cancellationToken = default)
+        {
+            logger.LogInformation(Messages.DownloadPhotoAsync.Start_Downloading, blobName);
+
+            var blob = await blobStorageService.DownloadBlobAsync(blobName, cancellationToken);
+
+            logger.LogInformation(Messages.DownloadPhotoAsync.DownloadSuccess, blobName);
+
+            return new DownloadedPhotoDto
+            {
+                Content = blob.Content,
+                FileName = blob.FileName ?? blobName, 
+                ContentType = blob.ContentType
+            };
+        }
+
+        #endregion
+
         [ExposedOnlyToUnitTests]
         internal static class Messages
         {
-            public static class UploadAsync
+            public static class UploadPhotoAsync
             {
                 public const string Start_Uploading = "Started uploading pictures.";
                 public const string Log_Creating_2 = "Creating {TypeName} with BlobName: {BlobName}.";
@@ -143,6 +168,12 @@ namespace MyBudgetIA.Application.Photo
                 public const string StreamMustNotBeNull = "Stream can not be null.";
                 public const string StreamMustBeReadable = "Stream must be readable.";
                 public const string StreamLengthMustMatchProvidedLength = "Stream length does not match file length.";
+            }
+
+            public static class DownloadPhotoAsync
+            {
+                public const string Start_Downloading = "Started downloading photo with blob name '{BlobName}'.";
+                public const string DownloadSuccess = "Successfully downloaded photo from blob '{BlobName}'.";
             }
         }
     }

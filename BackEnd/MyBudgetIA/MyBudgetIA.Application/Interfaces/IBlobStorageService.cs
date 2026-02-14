@@ -1,4 +1,5 @@
 ﻿using MyBudgetIA.Application.Photo.Dtos;
+using Shared.Storage.DTOS;
 
 namespace MyBudgetIA.Application.Interfaces
 {
@@ -19,5 +20,15 @@ namespace MyBudgetIA.Application.Interfaces
         /// <param name="cancellationToken">A token that can be used to cancel the upload operation.</param>
         /// <returns>A task that represents the asynchronous upload operation.</returns>
         Task<BlobUploadResult> UploadFileAsync(BlobUploadRequest request, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Downloads the specified blob from the container asynchronously.
+        /// </summary>
+        /// <param name="blobName">The name of the blob to download. This must be a valid blob name within the container.</param>
+        /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation if needed.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains a BlobDownloadData object, which
+        /// includes the content stream, content type, content length, file name, tracking ID, and metadata associated
+        /// with the downloaded blob.</returns>
+        Task<BlobDownloadData> DownloadBlobAsync(string blobName, CancellationToken cancellationToken = default);
     }
 }

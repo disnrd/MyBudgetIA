@@ -58,8 +58,8 @@ namespace MyBudgetIA.Infrastructure.Exceptions
             Exception? innerException = null)
             : base(
                 publicMessage: DefaultPublicMessage,
-                errorCode: ErrorCodes.BlobStorageError,
-                statusCode: 503,
+                errorCode: azureErrorCode ?? ErrorCodes.BlobStorageError,
+                statusCode: azureStatusCode ?? 503,
                 internalMessage: message,
                 innerException: innerException)
         {

@@ -3,6 +3,7 @@ using MyBudgetIA.Api.Uploads;
 using MyBudgetIA.Application.Photo;
 using MyBudgetIA.Application.Photo.Dtos;
 using Shared.Models;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace MyBudgetIA.Api.Controllers
 {
@@ -25,17 +26,7 @@ namespace MyBudgetIA.Api.Controllers
         {
             if (photos is null || !photos.Any())
             {
-                return FailResponse(
-                    message: "No photos uploaded.",
-                    errors:
-                    [
-                        new ApiError
-                        {
-                            Code = ErrorCodes.BadRequest,
-                            Field = "Photos",
-                            Message = "You must upload at least one photo."
-                        }
-                    ]);
+                return BadRequestResponse("No photos uploaded.", [ApiErrors.RequiredWithMessage("Photos", "You must upload at least one photo.")]);
             }
 
             var uploadedFiles = photos.Select(f => new FormFileAdapter(f)).ToList();
@@ -52,9 +43,25 @@ namespace MyBudgetIA.Api.Controllers
             {
                 Success = result.IsSuccess,
                 Message = message,
-                Data = result,
-                Errors = []
+                Data = result
             });
+        }
+
+        [HttpGet("blob/{blobName}")]
+        [ProducesResponseType(typeof(FileStreamResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> GetPhotoBlob(string blobName, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(blobName))
+                return BadRequestResponse("Blob name is required.", [ApiErrors.Required("BlobName")]);
+
+            var result = await photoService.DownloadPhotoAsync(blobName, ct);
+
+            if (result is null)
+                return NotFoundResponse("Blob not found.", [ApiErrors.NotFound("BlobName", $"No blob found with the name '{blobName}'.")]);
+
+            return File(result.Content, result.ContentType, result.FileName);
         }
     }
 }
