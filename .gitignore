@@ -48,4 +48,4 @@ Logs/
 # Env secrets
 .env
 *.env
-/ReactFrontEnd/MyBudgetIA.Front
+
