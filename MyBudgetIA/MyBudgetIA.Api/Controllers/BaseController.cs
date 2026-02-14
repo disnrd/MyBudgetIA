@@ -24,4 +24,5 @@ namespace MyBudgetIA.Api.Controllers
         protected IActionResult NotFoundResponse(string message, ApiError[]? errors = null)
             => NotFound(ApiResponse.Fail(message, errors));
     }
+
 }
