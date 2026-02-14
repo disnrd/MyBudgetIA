@@ -10,7 +10,6 @@ namespace MyBudgetIA.Api.Controllers
     {
         protected IActionResult OkResponse<T>(T data, string message = "Success")
             => Ok(ApiResponse<T>.Ok(data, message));
-
         protected IActionResult OkResponse(string message = "Success")
             => Ok(ApiResponse.Ok(message));
 
@@ -22,7 +21,6 @@ namespace MyBudgetIA.Api.Controllers
 
         protected IActionResult NotFoundResponse<T>(string message, ApiError[]? errors = null)
             => NotFound(ApiResponse<T>.Fail(message, errors));
-
         protected IActionResult NotFoundResponse(string message, ApiError[]? errors = null)
             => NotFound(ApiResponse.Fail(message, errors));
     }
