@@ -222,7 +222,7 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
         {
             // Arrange
             var fileName1 = "logo.txt";
-            var blobName1 = $"photos/{Guid.NewGuid():N}.txt";
+            var blobName1 = $"photos/a{Guid.NewGuid():N}.txt";
             var content = "content";
             var contentType = "image/jpeg";
             var trackingId1 = Guid.NewGuid().ToString("N");
@@ -243,7 +243,7 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
             var uploadResult = await blobClient.UploadAsync(uploadStream, uploadOptions, CancellationToken.None);
 
             var fileName2 = "logo2.txt";
-            var blobName2 = $"photos/{Guid.NewGuid():N}.txt";
+            var blobName2 = $"photos/b{Guid.NewGuid():N}.txt";
             var trackingId2 = Guid.NewGuid().ToString("N");
             var content2 = "content";
             await using var uploadStream2 = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(content2));
