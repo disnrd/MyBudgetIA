@@ -143,9 +143,25 @@ namespace MyBudgetIA.Application.Photo
             return new DownloadedPhotoDto
             {
                 Content = blob.Content,
-                FileName = blob.FileName ?? blobName, 
+                FileName = blob.FileName ?? blobName,
                 ContentType = blob.ContentType
             };
+        }
+
+        #endregion
+
+        #region GetUploadedPhotosInfosAsync
+
+        /// <inheritdoc/>
+        public async Task<IEnumerable<BlobData>> GetUploadedPhotosInfosAsync(CancellationToken cancellationToken = default)
+        {
+            logger.LogInformation(Messages.ListingUploadedPhotoAsync.Start_Retrieving_List);
+
+            var blobsData = await blobStorageService.GetBlobsInfoAsync(cancellationToken);
+
+            logger.LogInformation(Messages.ListingUploadedPhotoAsync.ListingSuccess);
+
+            return blobsData;
         }
 
         #endregion
@@ -174,6 +190,12 @@ namespace MyBudgetIA.Application.Photo
             {
                 public const string Start_Downloading = "Started downloading photo with blob name '{BlobName}'.";
                 public const string DownloadSuccess = "Successfully downloaded photo from blob '{BlobName}'.";
+            }
+
+            public static class ListingUploadedPhotoAsync
+            {
+                public const string Start_Retrieving_List = "Started retrieving list of uploaded photos.";
+                public const string ListingSuccess = "Successfully retrieved list of uploaded photos.";
             }
         }
     }

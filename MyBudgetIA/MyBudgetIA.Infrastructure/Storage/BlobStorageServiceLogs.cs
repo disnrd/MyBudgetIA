@@ -85,5 +85,32 @@ namespace MyBudgetIA.Infrastructure.Storage
         [LoggerMessage(EventId = 8, Level = LogLevel.Information, Message = "Succesfully downloaded blob {BlobName}  from container {ContainerName}.")]
         public static partial void LogSuccessBlobDownload(this ILogger logger, string blobName, string containerName);
 
+
+        /// <summary>
+        /// Logs a debug message indicating that the retrieving of all blobs infos has started.
+        /// </summary>
+        /// <param name="logger">The logger instance used to record the debug message.</param>
+        /// <param name="containerName">The name of the container.</param>
+        [LoggerMessage(EventId = 9, Level = LogLevel.Debug, Message = "Started getting blobs infos {ContainerName}.")]
+        public static partial void LogStartedGettingBlobListing(this ILogger logger, string containerName);
+
+        /// <summary>
+        /// Logs an error message indicating that an Azure Blobs listing operation has failed.
+        /// </summary>
+        /// <param name="logger">The logger instance used to record the error message.</param>
+        /// <param name="containerName">The name of the Azure container that failed to list blobs.</param>
+        /// <param name="status">The HTTP status code returned by the failed listing operation.</param>
+        /// <param name="errorCode">The error code associated with the listing failure, if available.</param>
+        [LoggerMessage(EventId = 10, Level = LogLevel.Error, Message = "Azure Blob listing failed for blob from container {ContainerName}. Status={Status}, ErrorCode={ErrorCode}.")]
+        public static partial void LogAzureBlobListingError(this ILogger logger, string containerName, int status, string errorCode);
+
+        /// <summary>
+        /// Logs an informational message indicating that the blobs were successfully listed from the specified
+        /// container.
+        /// </summary>
+        /// <param name="logger">The logger instance used to record the success message.</param>
+        /// <param name="containerName">The name of the container from which the blobs were listed.</param>
+        [LoggerMessage(EventId = 11, Level = LogLevel.Information, Message = "Succesfully listed blobs from container {ContainerName}.")]
+        public static partial void LogSuccessBlobListing(this ILogger logger, string containerName);
     }
 }

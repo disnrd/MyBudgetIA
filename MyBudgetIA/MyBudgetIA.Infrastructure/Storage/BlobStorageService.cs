@@ -1,5 +1,4 @@
 ﻿using Azure;
-using Azure.Core;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
@@ -58,7 +57,7 @@ namespace MyBudgetIA.Infrastructure.Storage
             {
                 // add filename to metadata..
                 HttpHeaders = new BlobHttpHeaders { ContentType = request.ContentType },
-                Metadata = BlobMetadata.Create(request.ContentType, request.TrackingId, request.CreatedAt), // <-- contentType deja deans headers, utilité pour recherche?
+                Metadata = BlobMetadata.Create(request.FileName, request.TrackingId),
                 Conditions = new BlobRequestConditions
                 {
                     // avoid overwriting existing blobs
@@ -117,8 +116,6 @@ namespace MyBudgetIA.Infrastructure.Storage
                 || string.IsNullOrWhiteSpace(request.BlobName)
                 || string.IsNullOrWhiteSpace(request.TrackingId)
                 || string.IsNullOrWhiteSpace(request.ContentType)
-                || request.CreatedAt == default
-                || request.CreatedAt.Kind != DateTimeKind.Utc
                 || request.Stream is null
                 || !request.Stream.CanRead)
             {
@@ -172,7 +169,6 @@ namespace MyBudgetIA.Infrastructure.Storage
                 {
                     Content = blobResult.Value.Content,
                     ContentType = blobResult.Value.Details.ContentType ?? "application/octet-stream",
-                    ContentLength = blobResult.Value.Details.ContentLength,
                     FileName = GetMetadataValue(blobResult.Value.Details.Metadata, nameof(BlobDownloadData.FileName)),
                     // trackingId est il un concept métier d'audit/tracing..domain?..
                     TrackingId = GetMetadataValue(blobResult.Value.Details.Metadata, nameof(BlobDownloadData.TrackingId)),
@@ -194,6 +190,45 @@ namespace MyBudgetIA.Infrastructure.Storage
             string key)
         {
             return metadata.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value) ? value : null;
+        }
+
+        #endregion
+
+        #region GetBlobsInfoAsync
+
+        /// <inheritdoc/>
+        public async Task<IEnumerable<BlobData>> GetBlobsInfoAsync(CancellationToken ct = default)
+        {
+            logger.LogStartedGettingBlobListing(container.Name);
+
+            try
+            {
+                var results = new List<BlobData>();
+
+                // ATTENTION pour la pagination : azure blob ne définit pas d'ordre de listing
+                await foreach (BlobItem blob in container.GetBlobsAsync(
+                    traits: BlobTraits.Metadata,
+                    states: BlobStates.None,
+                    prefix: default,
+                    ct))
+                {
+                    results.Add(new BlobData(
+                        BlobName: blob.Name,
+                        FileName: GetMetadataValue(blob.Metadata, nameof(BlobData.FileName)) ?? blob.Name,
+                        LastModified: blob.Properties.LastModified));
+                }
+
+                logger.LogSuccessBlobListing(container.Name);
+
+                return results;
+            }
+            catch (RequestFailedException ex)
+            {
+                var errorCode = AzureBlobErrorCodes.MapAzureBlobErrorCode(ex, BlobOperationType.Download);
+                logger.LogAzureBlobListingError(container.Name, ex.Status, errorCode);
+
+                throw new BlobStorageException(StorageErrorMessages.AzureListFailed, container.Name, errorCode, ex.Status);
+            }
         }
 
         #endregion

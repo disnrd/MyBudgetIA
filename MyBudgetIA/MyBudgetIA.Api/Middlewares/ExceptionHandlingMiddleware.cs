@@ -43,6 +43,31 @@ namespace MyBudgetIA.Api.Middlewares
             var (statusCode, message, errors) = MapException(exception);
             context.Response.StatusCode = statusCode;
 
+            LogException(traceId, context, exception, statusCode, message);
+
+            // add trace Id ?
+            var response = ApiResponse.Fail(message, errors);           
+
+            // TODO : finish tests coverage if possible ??
+
+            try
+            {
+                await context.Response.WriteAsJsonAsync(response, JsonOptions);
+            }
+            catch (Exception writeEx)
+            {
+                using (LogContext.PushProperty("TraceId", traceId))
+                {
+                    logger.LogError(
+                        writeEx,
+                        ExceptionMessages.LogMessages.ResponseWriteError,
+                        traceId);
+                }
+            }
+        }
+
+        private void LogException(string traceId, HttpContext context, Exception exception, int statusCode, string message)
+        {
             using (LogContext.PushProperty("TraceId", traceId))
             using (LogContext.PushProperty("StatusCode", statusCode))
             using (LogContext.PushProperty("RequestPath", context.Request.Path))
@@ -71,36 +96,6 @@ namespace MyBudgetIA.Api.Middlewares
                     logger.LogWarning(
                         ExceptionMessages.LogMessages.ValidationError,
                         validationEx.Errors);
-                }
-            }
-
-            var response = new ApiResponse
-            {
-                Success = false,
-                Message = message,
-                Errors = errors
-            };
-
-            var jsonOptions = new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-            };
-
-            // TODO : finish tests coverage if possible ??
-
-            try
-            {
-                await context.Response.WriteAsJsonAsync(response, jsonOptions);
-            }
-            catch (Exception writeEx)
-            {
-                using (LogContext.PushProperty("TraceId", traceId))
-                {
-                    logger.LogError(
-                        writeEx,
-                        ExceptionMessages.LogMessages.ResponseWriteError,
-                        traceId);
                 }
             }
         }
@@ -147,6 +142,12 @@ namespace MyBudgetIA.Api.Middlewares
                         : []
                 )
             };
+
+        private static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        };
 
         [ExposedOnlyToUnitTests]
         internal static class ExceptionMessages

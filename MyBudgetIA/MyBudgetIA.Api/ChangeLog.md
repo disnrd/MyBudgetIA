@@ -29,6 +29,10 @@
   - Updated **BlobStorageService**" with method `DownloadBlobAsync`.
   - Added REST API endpoint `GetPhotoBlob{blobName}` in **PhotosController** to allow downloading photos from blob storage.
 
+- (16/02/2026):
+  - Updated **BlobStorageService**" with method `GetBlobsInfoAsync`.
+  - Added REST API endpoint `GetUploadedPhotosInfos` in **PhotosController** to list all photos from blob storage.
+
 
   == next steps: container, devops, queue storage, function ? retry policies? => stream seekable ?
 dont forget to uncomment integration tests for blob storage and queue storage as they need azurite storage emulator or actual azure storage account to run,

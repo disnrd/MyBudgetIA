@@ -15,5 +15,7 @@
         public const string BlobNameValidationFailed = "Blob name must not be empty.";
         public const string AzureDownloadFailed = "Unexpected blob download failure.";
 
+        public const string AzureListFailed = "Unexpected blob listing failure.";
+
     }
 }

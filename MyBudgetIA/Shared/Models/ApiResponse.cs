@@ -1,59 +1,27 @@
-﻿using System.Diagnostics.CodeAnalysis;
-
-namespace Shared.Models
+﻿namespace Shared.Models
 {
-    public class ApiResponse<TData>
+    public record ApiResponse<T>(
+    bool Success,
+    string Message,
+    T? Data,
+    ApiError[] Errors)
     {
-        public bool Success { get; set; }
+        public static ApiResponse<T> Ok(T data, string message = "Success") =>
+            new(true, message, data, []);
 
-        [StringSyntax("json")]
-        public string Message { get; set; } = string.Empty;
-
-        public TData Data { get; set; } = default!;
-
-        public ApiError[] Errors { get; set; } = [];
-
-        public static ApiResponse<TData> Ok(TData data, string message = "Success")
-            => new()
-            {
-                Success = true,
-                Message = message,
-                Data = data,
-                Errors = []
-            };
-
-        public static ApiResponse<TData> Fail(string message, ApiError[]? errors = null)
-            => new()
-            {
-                Success = false,
-                Message = message,
-                Data = default!,
-                Errors = errors ?? []
-            };
+        public static ApiResponse<T> Fail(string message, ApiError[]? errors = null) =>
+            new(false, message, default, errors ?? []);
     }
 
-    public class ApiResponse
+    public record ApiResponse(
+        bool Success,
+        string Message,
+        ApiError[] Errors)
     {
-        public bool Success { get; set; }
+        public static ApiResponse Ok(string message = "Success") =>
+            new(true, message, []);
 
-        public string Message { get; set; } = string.Empty;
-
-        public ApiError[] Errors { get; set; } = [];
-
-        public static ApiResponse Ok(string message = "Success")
-            => new()
-            {
-                Success = true,
-                Message = message,
-                Errors = []
-            };
-
-        public static ApiResponse Fail(string message, ApiError[]? errors = null)
-            => new()
-            {
-                Success = false,
-                Message = message,
-                Errors = errors ?? []
-            };
+        public static ApiResponse Fail(string message, ApiError[]? errors = null) =>
+            new(false, message, errors ?? []);
     }
 }

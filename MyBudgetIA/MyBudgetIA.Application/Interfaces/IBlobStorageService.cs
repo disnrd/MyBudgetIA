@@ -30,5 +30,15 @@ namespace MyBudgetIA.Application.Interfaces
         /// includes the content stream, content type, content length, file name, tracking ID, and metadata associated
         /// with the downloaded blob.</returns>
         Task<BlobDownloadData> DownloadBlobAsync(string blobName, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Retrieves a collection of blob data asynchronously from the storage service.
+        /// </summary>
+        /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation if needed.</param>
+        /// <remarks>This method use an application Dtos and will not be consumed in a futur worker.</remarks>
+        /// <returns>A task that represents the asynchronous operation. The task result contains an enumerable collection of <see
+        /// cref="BlobData"/> objects representing the blobs retrieved. The collection will be empty if no blobs are
+        /// found.</returns>
+        Task<IEnumerable<BlobData>> GetBlobsInfoAsync(CancellationToken cancellationToken = default);
     }
 }

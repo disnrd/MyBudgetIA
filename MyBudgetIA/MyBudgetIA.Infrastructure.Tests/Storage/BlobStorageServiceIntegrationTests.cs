@@ -1,5 +1,4 @@
 ﻿using Azure;
-using Azure.Core;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -8,7 +7,6 @@ using MyBudgetIA.Application.Photo.Dtos;
 using MyBudgetIA.Infrastructure.Configuration;
 using MyBudgetIA.Infrastructure.Storage;
 using MyBudgetIA.Infrastructure.Storage.Abstractions;
-using System.Globalization;
 
 namespace MyBudgetIA.Infrastructure.Tests.Storage
 {
@@ -35,6 +33,13 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
             containerClient = blobServiceClient.GetBlobContainerClient(ContainerName);
 
             await containerClient.CreateIfNotExistsAsync();
+
+            // Clean container
+            
+            await foreach (var blob in containerClient.GetBlobsAsync()) 
+            { 
+                await containerClient.DeleteBlobIfExistsAsync(blob.Name); 
+            }
 
             var options = Options.Create(new BlobStorageSettings
             {
@@ -78,10 +83,7 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
                 blobName: blobName,
                 stream: stream,
                 contentType: contentType,
-                trackingId: trackingId)
-            {
-                CreatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc)
-            };
+                trackingId: trackingId);
 
             // Act
             var result = await blobStorageService.UploadFileAsync(request, CancellationToken.None);
@@ -105,8 +107,8 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
                 Assert.That(result.Etag, Is.EqualTo(props.Value.ETag.ToString().Trim('"')));
 
                 Assert.That(props.Value.ContentType, Is.EqualTo(contentType));
-                Assert.That(props.Value.Metadata.ContainsKey("contentType"), Is.True);
-                Assert.That(props.Value.Metadata["contentType"], Is.EqualTo(contentType));
+                Assert.That(props.Value.Metadata.ContainsKey("fileName"), Is.True);
+                Assert.That(props.Value.Metadata["fileName"], Is.EqualTo(fileName));
 
                 Assert.That(props.Value.Metadata.ContainsKey("trackingId"), Is.True);
                 Assert.That(props.Value.Metadata["trackingId"], Is.EqualTo(trackingId));
@@ -121,16 +123,10 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
 
             // 409 ? Azure Blob Storage returns 409 Conflict when trying to upload a blob that already exists without overwrite flag.
             await using var s1 = new MemoryStream("one"u8.ToArray());
-            var r1 = new BlobUploadRequest("a.txt", blobName, s1, "text/plain", Guid.NewGuid().ToString("N"))
-            {
-                CreatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc)
-            };
+            var r1 = new BlobUploadRequest("a.txt", blobName, s1, "text/plain", Guid.NewGuid().ToString("N"));
 
             await using var s2 = new MemoryStream("two"u8.ToArray());
-            var r2 = new BlobUploadRequest("a.txt", blobName, s2, "text/plain", Guid.NewGuid().ToString("N"))
-            {
-                CreatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc)
-            };
+            var r2 = new BlobUploadRequest("a.txt", blobName, s2, "text/plain", Guid.NewGuid().ToString("N"));
 
             // Act
             var first = await blobStorageService.UploadFileAsync(r1, CancellationToken.None);
@@ -155,12 +151,11 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
         public async Task BlobStorageService_DownloadFileAsync_ShouldDownloadUploadedBlob()
         {
             // Arrange
-            //var fileName = "logo.txt";
+            var fileName = "logo.txt";
             var blobName = $"photos/{Guid.NewGuid():N}.txt";
             var content = "content";
             var contentType = "image/jpeg";
             var trackingId = Guid.NewGuid().ToString("N");
-            var createdAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
             await using var uploadStream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(content));
 
             var blobClient = containerClient.GetBlobClient(blobName);
@@ -168,7 +163,7 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
             BlobUploadOptions uploadOptions = new()
             {
                 HttpHeaders = new BlobHttpHeaders { ContentType = contentType },
-                Metadata = BlobMetadata.Create(contentType, trackingId, createdAt),
+                Metadata = BlobMetadata.Create(fileName, trackingId),
                 Conditions = new BlobRequestConditions
                 {
                     // avoid overwriting existing blobs
@@ -192,13 +187,10 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
                 var downloadedContent = await reader.ReadToEndAsync();
                 Assert.That(downloadedContent, Is.EqualTo(content));
                 Assert.That(downloadResult.Metadata, Is.Not.Null);
-                Assert.That(downloadResult.Metadata.ContainsKey("contentType"), Is.True);
-                Assert.That(downloadResult.Metadata["contentType"], Is.EqualTo(contentType));
                 Assert.That(downloadResult.Metadata.ContainsKey("trackingId"), Is.True);
                 Assert.That(downloadResult.Metadata["trackingId"], Is.EqualTo(trackingId));
-                Assert.That(downloadResult.Metadata.ContainsKey("createdAtUtc"), Is.True);
-                var parsedCreatedAt = DateTime.Parse(downloadResult.Metadata["createdAtUtc"], null, DateTimeStyles.RoundtripKind);
-                Assert.That(parsedCreatedAt, Is.EqualTo(createdAt).Within(TimeSpan.FromSeconds(1)));
+                Assert.That(downloadResult.Metadata.ContainsKey("fileName"), Is.True);
+                Assert.That(downloadResult.Metadata["fileName"], Is.EqualTo(fileName));
             }
         }
 
@@ -218,6 +210,75 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
             {
                 Assert.That(result.FileName, Is.Null);
                 Assert.That(result.TrackingId, Is.Null);
+            }
+        }
+
+        #endregion
+
+        #region GetBlobsInfoAsync
+
+        [Test]
+        public async Task BlobStorageService_GetBlobsInfoAsync_ShouldReturnInfoOfUploadedBlobs()
+        {
+            // Arrange
+            var fileName1 = "logo.txt";
+            var blobName1 = $"photos/{Guid.NewGuid():N}.txt";
+            var content = "content";
+            var contentType = "image/jpeg";
+            var trackingId1 = Guid.NewGuid().ToString("N");
+            await using var uploadStream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(content));
+
+            var blobClient = containerClient.GetBlobClient(blobName1);
+
+            BlobUploadOptions uploadOptions = new()
+            {
+                HttpHeaders = new BlobHttpHeaders { ContentType = contentType },
+                Metadata = BlobMetadata.Create(fileName1, trackingId1),
+                Conditions = new BlobRequestConditions
+                {
+                    // avoid overwriting existing blobs
+                    IfNoneMatch = ETag.All
+                }
+            };
+            var uploadResult = await blobClient.UploadAsync(uploadStream, uploadOptions, CancellationToken.None);
+
+            var fileName2 = "logo2.txt";
+            var blobName2 = $"photos/{Guid.NewGuid():N}.txt";
+            var trackingId2 = Guid.NewGuid().ToString("N");
+            var content2 = "content";
+            await using var uploadStream2 = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(content2));
+
+            var blobClient2 = containerClient.GetBlobClient(blobName2);
+
+            BlobUploadOptions uploadOptions2 = new()
+            {
+                HttpHeaders = new BlobHttpHeaders { ContentType = contentType },
+                Metadata = BlobMetadata.Create(fileName2, trackingId2),
+                Conditions = new BlobRequestConditions
+                {
+                    // avoid overwriting existing blobs
+                    IfNoneMatch = ETag.All
+                }
+            };
+            var uploadResult2 = await blobClient2.UploadAsync(uploadStream2, uploadOptions2, CancellationToken.None);
+
+            // Act
+            var blobsInfo = await blobStorageService.GetBlobsInfoAsync(CancellationToken.None);
+
+            // Assert
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(blobsInfo, Is.Not.Null);
+                Assert.That(blobsInfo.Count(), Is.EqualTo(2));
+
+                var list = blobsInfo.OrderBy(b => b.BlobName).ToList();
+                Assert.That(list[0].BlobName, Is.EqualTo(blobName1));
+                Assert.That(list[0].FileName, Is.EqualTo(fileName1));
+                Assert.That(list[0].LastModified, Is.Not.Null);
+
+                Assert.That(list[1].BlobName, Is.EqualTo(blobName2));
+                Assert.That(list[1].FileName, Is.EqualTo(fileName2));
+                Assert.That(list[1].LastModified, Is.Not.Null);
             }
         }
 

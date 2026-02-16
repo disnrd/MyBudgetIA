@@ -1,10 +1,7 @@
 ﻿using Azure;
-using Azure.Core;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Grpc.Core;
-using Humanizer;
-using k8s.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -84,10 +81,7 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
                 blobName: blobName,
                 stream: stream,
                 contentType: "text/plain",
-                trackingId: trackingId)
-            {
-                CreatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc)
-            };
+                trackingId: trackingId);
         }
 
         [Test]
@@ -353,7 +347,6 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
             {
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result.ContentType, Is.EqualTo(contentType));
-                Assert.That(result.ContentLength, Is.EqualTo(contentLength));
                 Assert.That(result.FileName, Is.EqualTo(fileName));
                 Assert.That(result.TrackingId, Is.EqualTo(trackingId));
                 Assert.That(result.Metadata, Is.EqualTo(metadata));
@@ -412,7 +405,6 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
             {
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result.ContentType, Is.EqualTo(contentType));
-                Assert.That(result.ContentLength, Is.EqualTo(contentLength));
                 Assert.That(result.FileName, Is.Null);
                 Assert.That(result.TrackingId, Is.Null);
                 Assert.That(result.Metadata, Is.EqualTo(metadata));
@@ -520,6 +512,133 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
             }
 
         }
+
+        #endregion
+
+        #region GetBlobsInfoAsync
+
+        [Test]
+        public async Task BlobStorageService_GetBlobsInfoAsync_ShouldReturnListOfBlobInfo()
+        {
+            // Arrange
+            var blobName1 = "blob1";
+            var fileName1 = "test1.jpg";
+            var lastUpdated1 = DateTimeOffset.UtcNow.AddDays(-1);
+            var blob1 = BlobsModelFactory
+                .BlobItem(
+                    name: blobName1,
+                    metadata: new Dictionary<string, string> { { nameof(BlobData.FileName), fileName1 } },
+                    properties: BlobsModelFactory.BlobItemProperties(accessTierInferred: false, lastModified: lastUpdated1));
+
+            var blobName2 = "blob2";
+            var fileName2 = "test2.jpg";
+            var lastUpdated2 = DateTimeOffset.UtcNow; 
+            var blob2 = BlobsModelFactory
+                .BlobItem(
+                    name: blobName2,
+                    metadata: new Dictionary<string, string> { { nameof(BlobData.FileName), fileName2 } },
+                    properties: BlobsModelFactory.BlobItemProperties(accessTierInferred: false, lastModified: lastUpdated2));
+            
+            var blobs = new[] { blob1, blob2 };
+
+            var asyncPageable = BlobAsyncPageableFactory.Create(blobs);
+
+            mockContainerClient
+                .Setup(c => c.GetBlobsAsync(
+                    It.IsAny<BlobTraits>(),
+                    It.IsAny<BlobStates>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns(asyncPageable)
+                .Verifiable();
+
+            // Act
+            var result = await service.GetBlobsInfoAsync(CancellationToken.None);
+
+            // Assert
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(result, Is.Not.Null);
+                Assert.That(result.Count(), Is.EqualTo(2));
+
+                var list = result.ToList();
+                Assert.That(list[0].BlobName, Is.EqualTo(blobName1));
+                Assert.That(list[0].FileName, Is.EqualTo(fileName1));
+                Assert.That(list[0].LastModified, Is.EqualTo(lastUpdated1));
+
+                Assert.That(list[1].BlobName, Is.EqualTo(blobName2));
+                Assert.That(list[1].FileName, Is.EqualTo(fileName2));
+                Assert.That(list[1].LastModified, Is.EqualTo(lastUpdated2));
+
+                var startLog = logger.Entries.Single(e => e.EventId.Id == 9);
+                Assert.That(startLog.Level, Is.EqualTo(LogLevel.Debug));
+                Assert.That(TestLogger<BlobStorageService>.GetStateValue(startLog, "ContainerName"), Is.EqualTo(ContainerName));
+
+                var successLog = logger.Entries.Single(e => e.EventId.Id == 11);
+                Assert.That(successLog.Level, Is.EqualTo(LogLevel.Information));
+                Assert.That(TestLogger<BlobStorageService>.GetStateValue(successLog, "ContainerName"), Is.EqualTo(ContainerName));
+
+                mockContainerClient.Verify(c => c.GetBlobsAsync(
+                    It.IsAny<BlobTraits>(),
+                    It.IsAny<BlobStates>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()),
+                    Times.Once);
+            }
+        }
+
+        public static class BlobAsyncPageableFactory
+        {
+            public static AsyncPageable<BlobItem> Create(IEnumerable<BlobItem> items)
+            {
+                var page = Page<BlobItem>.FromValues([.. items], null, null!);
+                return AsyncPageable<BlobItem>.FromPages([page]);
+            }
+        }
+
+        [Test]
+        public async Task BlobStorageService_GetBlobsInfoAsync_RequestFailedException_ShouldThrowBlobStorageException()
+        {
+            // Arrange
+            var statusCode = 404;
+
+            mockContainerClient
+                .Setup(c => c.GetBlobsAsync(
+                    It.IsAny<BlobTraits>(),
+                    It.IsAny<BlobStates>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()))
+                .Throws(new RequestFailedException(
+                    status: statusCode,
+                    errorCode: "BlobNotFound",
+                    message: "Blob not found",
+                    innerException: null))
+                .Verifiable();
+
+            // Act
+            var ex = Assert.ThrowsAsync<BlobStorageException>(async () =>
+                await service.GetBlobsInfoAsync(CancellationToken.None));
+
+            // Assert
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(ex.Message, Is.EqualTo(StorageErrorMessages.AzureListFailed));
+                Assert.That(ex.ErrorCode, Is.EqualTo(ErrorCodes.BlobNotFound));
+
+                var errorLog = logger.Entries.Single(e => e.EventId.Id == 10);
+                Assert.That(errorLog.Level, Is.EqualTo(LogLevel.Error));
+                Assert.That(TestLogger<BlobStorageService>.GetStateValue(errorLog, "ContainerName"), Is.EqualTo(ContainerName));
+                Assert.That(TestLogger<BlobStorageService>.GetStateValue(errorLog, "Status"), Is.EqualTo(statusCode));
+                Assert.That(TestLogger<BlobStorageService>.GetStateValue(errorLog, "ErrorCode"), Is.EqualTo(ErrorCodes.BlobNotFound));
+
+                mockContainerClient.Verify(b => b.GetBlobsAsync(
+                    It.IsAny<BlobTraits>(),
+                    It.IsAny<BlobStates>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()),
+                    Times.Once);
+            }
+    }
 
         #endregion
     }

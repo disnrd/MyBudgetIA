@@ -39,14 +39,16 @@ namespace MyBudgetIA.Api.Controllers
                     ? "Upload partially completed."
                     : "Upload failed.";
 
-            return Ok(new ApiResponse<UploadPhotosResult>
-            {
-                Success = result.IsSuccess,
-                Message = message,
-                Data = result
-            });
+            return OkResponse(result, message);
         }
 
+        /// <summary>
+        /// Retrieves a photo blob from storage and returns it as a file stream if found.
+        /// </summary>
+        /// <param name="blobName">The name of the blob to retrieve. This parameter cannot be null or whitespace.</param>
+        /// <param name="ct">A cancellation token that can be used to cancel the operation.</param>
+        /// <returns>An IActionResult containing the photo blob as a file stream if found; otherwise, a 404 Not Found or 400 Bad
+        /// Request response.</returns>
         [HttpGet("blob/{blobName}")]
         [ProducesResponseType(typeof(FileStreamResult), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
@@ -62,6 +64,21 @@ namespace MyBudgetIA.Api.Controllers
                 return NotFoundResponse("Blob not found.", [ApiErrors.NotFound("BlobName", $"No blob found with the name '{blobName}'.")]);
 
             return File(result.Content, result.ContentType, result.FileName);
+        }
+
+        /// <summary>
+        /// Retrieves information about all uploaded photo blobs.
+        /// </summary>
+        /// <param name="ct">The cancellation token used to propagate notification that the operation should be canceled.</param>
+        /// <returns>An IActionResult containing an ApiResponse with a collection of BlobData representing the uploaded photos.</returns>
+        [HttpGet("blobs")]
+        [ProducesResponseType(typeof(ApiResponse<IEnumerable<BlobData>>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetUploadedPhotosInfos(CancellationToken ct)
+        {
+            // todo: Add pagination
+            var result = await photoService.GetUploadedPhotosInfosAsync(ct);
+
+            return OkResponse(result);
         }
     }
 }

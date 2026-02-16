@@ -36,10 +36,5 @@
         /// Gets or sets the trackingId identifier used to track and associate related operations or requests.
         /// </summary>
         public string TrackingId { get; set; } = trackingId;
-
-        /// <summary>
-        /// Gets or sets the date and time when the object was created.
-        /// </summary>
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }
