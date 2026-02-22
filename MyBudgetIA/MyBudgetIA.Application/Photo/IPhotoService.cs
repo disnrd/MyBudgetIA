@@ -1,4 +1,5 @@
 ﻿using MyBudgetIA.Application.Photo.Dtos;
+using MyBudgetIA.Application.Photo.Dtos.Blob;
 
 namespace MyBudgetIA.Application.Photo
 {
@@ -8,15 +9,15 @@ namespace MyBudgetIA.Application.Photo
     public interface IPhotoService
     {
         /// <summary>
-        /// Asynchronously uploads a collection of photos.
+        /// Asynchronously uploads a collection of photos, then send an alert message to a queue and returns the results of the two operations.
         /// </summary>
-        /// <param name="photos">A collection of files to upload (transport-agnostic).</param>
-        /// <param name="cancellationToken">A cancellation token that can be used to cancel the upload operation.</param>
-        /// <returns>
-        /// A task that represents the asynchronous upload operation. The task result contains an
-        /// <see cref="UploadPhotosResult"/> instance representing the overall outcome and the per-file results.
-        /// </returns>
-        Task<UploadPhotosResult> UploadPhotoAsync(
+        /// <param name="photos">A read-only collection of file upload requests representing the photos to upload. Each request must contain
+        /// valid file data.</param>
+        /// <param name="cancellationToken">A cancellation token that can be used to cancel the upload operation. The default value is <see
+        /// cref="CancellationToken.None"/>.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains a tuple with an enumerable of
+        /// upload results and a message indicating the outcome of the upload.</returns>
+        Task<(IEnumerable<UploadPhotosResult> result, string message)> UploadPhotoAsync(
             IReadOnlyCollection<IFileUploadRequest> photos,
             CancellationToken cancellationToken = default);
 

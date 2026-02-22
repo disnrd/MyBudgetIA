@@ -13,5 +13,10 @@
         /// Represents the default endpoint suffix for Azure Blob Storage service URLs.
         /// </summary>
         public const string BlobStorageEndpointSuffix = ".blob.core.windows.net";
+
+        /// <summary>
+        /// Represents the endpoint suffix used for Azure Queue Storage services.
+        /// </summary>
+        public const string QueueStorageEndpointSuffix = ".queue.core.windows.net";
     }
 }

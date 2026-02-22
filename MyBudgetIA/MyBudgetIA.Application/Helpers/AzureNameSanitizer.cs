@@ -98,11 +98,6 @@ namespace MyBudgetIA.Application.Helpers
                 }
             }
 
-            if (string.IsNullOrWhiteSpace(sanitized))
-            {
-                sanitized = defaultName;
-            }
-
             return sanitized;
         }
 

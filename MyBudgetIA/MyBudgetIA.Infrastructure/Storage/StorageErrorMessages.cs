@@ -7,15 +7,19 @@
     internal static class StorageErrorMessages
     {
         public const string UnexpectedUploadFailure = "Unexpected blob upload failure.";
-        public const string ValidationFailed = "Blob upload request validation failed.";
-        public const string AzureBlobUploadFailed = "Azure Blob upload failed.";
+        public const string BlobRequestValidationFailed = "Blob upload request validation failed.";
+        public const string BlobUploadFailed = "Azure Blob upload failed.";
 
         public const string BlobNotFound = "Blob not found.";
 
         public const string BlobNameValidationFailed = "Blob name must not be empty.";
-        public const string AzureDownloadFailed = "Unexpected blob download failure.";
+        public const string BlobDownloadFailed = "Unexpected blob download failure.";
 
-        public const string AzureListFailed = "Unexpected blob listing failure.";
+        public const string BlobsListFailed = "Unexpected blob listing failure.";
 
+        public const string QueueRequestValidationFailed = "Queue message request validation failed.";
+        public const string QueuePushFailed = "Failed to send message to the queue.";
+        public const string QueuePushUnexpectedFailed = "Unexpected failure when sending message to the queue.";
+        public const string FailedToSerializeQueueMessage = "Failed to serialize queue message.";
     }
 }

@@ -4,19 +4,21 @@ using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MyBudgetIA.Application.Interfaces;
-using MyBudgetIA.Application.Photo.Dtos;
+using MyBudgetIA.Application.Photo.Dtos.Blob;
 using MyBudgetIA.Infrastructure.Configuration;
 using MyBudgetIA.Infrastructure.Exceptions;
 using MyBudgetIA.Infrastructure.Storage.Abstractions;
+using MyBudgetIA.Infrastructure.Storage.Abstractions.ErrorMapper;
 using Shared.Models;
 using Shared.Storage.DTOS;
 
-namespace MyBudgetIA.Infrastructure.Storage
+namespace MyBudgetIA.Infrastructure.Storage.Blob
 {
     /// <inheritdoc cref="IBlobStorageService"/>
     public class BlobStorageService : IBlobStorageService
     {
         private readonly BlobContainerClient container;
+        private readonly IAzureStorageErrorMapper azureStorageErrorMapper;
         private readonly ILogger<BlobStorageService> logger;
 
         /// <summary>
@@ -25,14 +27,17 @@ namespace MyBudgetIA.Infrastructure.Storage
         /// </summary>
         /// <param name="blobService">The BlobServiceClient instance used to interact with the Azure Blob Storage service. Cannot be null.</param>
         /// <param name="options">The options containing BlobStorageSettings, including the container name to use. Cannot be null.</param>
+        /// <param name="azureStorageErrorMapper">The error mapper instance for translating Azure storage exceptions into user-friendly messages. Cannot be null.</param>
         /// <param name="logger">The logger instance for logging operations within the service. Cannot be null.</param>
         public BlobStorageService(
             IAzureBlobServiceClient blobService,
             IOptions<BlobStorageSettings> options,
+            IAzureStorageErrorMapper azureStorageErrorMapper,
             ILogger<BlobStorageService> logger)
         {
             var settings = options.Value;
             container = blobService.GetBlobContainerClient(settings.ContainerName);
+            this.azureStorageErrorMapper = azureStorageErrorMapper;
             this.logger = logger;
         }
 
@@ -55,7 +60,6 @@ namespace MyBudgetIA.Infrastructure.Storage
 
             BlobUploadOptions uploadOptions = new()
             {
-                // add filename to metadata..
                 HttpHeaders = new BlobHttpHeaders { ContentType = request.ContentType },
                 Metadata = BlobMetadata.Create(request.FileName, request.TrackingId),
                 Conditions = new BlobRequestConditions
@@ -72,10 +76,8 @@ namespace MyBudgetIA.Infrastructure.Storage
                 logger.LogSuccessBlobUpload(request.BlobName, request.TrackingId, container.Name);
 
                 return BlobUploadResult.CreateSuccess(
-                    fileName: request.FileName,
-                    trackingId: request.TrackingId,
-                    blobName: request.BlobName,
-                    etag: response.Value.ETag.ToString().Trim('"'));
+                    etag: response.Value.ETag.ToString().Trim('"'),
+                    response.Value.LastModified.ToUniversalTime());
             }
             //catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             //{   // consider all implications of a cancellation..
@@ -83,15 +85,12 @@ namespace MyBudgetIA.Infrastructure.Storage
             //}
             catch (RequestFailedException ex)
             {
-                var errorCode = AzureBlobErrorCodes.MapAzureBlobErrorCode(ex, BlobOperationType.Upload);
+                var errorCode = azureStorageErrorMapper.Map(ex, StorageOperationType.BlobUpload);
 
                 logger.LogAzureBlobUploadError(request.BlobName, ex.Status, errorCode);
 
                 return BlobUploadResult.CreateFailure(
-                    fileName: request.FileName,
-                    trackingId: request.TrackingId,
-                    blobName: request.BlobName,
-                    errorMessage: StorageErrorMessages.AzureBlobUploadFailed,
+                    errorMessage: StorageErrorMessages.BlobUploadFailed,
                     errorCode: errorCode);
             }
             catch (Exception)
@@ -99,9 +98,6 @@ namespace MyBudgetIA.Infrastructure.Storage
                 logger.LogAzureBlobUploadUnexpectedError(request.BlobName);
 
                 return BlobUploadResult.CreateFailure(
-                    fileName: request.FileName,
-                    trackingId: request.TrackingId,
-                    blobName: request.BlobName,
                     errorMessage: StorageErrorMessages.UnexpectedUploadFailure,
                     errorCode: ErrorCodes.BlobStorageError);
             }
@@ -120,10 +116,7 @@ namespace MyBudgetIA.Infrastructure.Storage
                 || !request.Stream.CanRead)
             {
                 failure = BlobUploadResult.CreateFailure(
-                    fileName: request.FileName ?? string.Empty,
-                    trackingId: request.TrackingId ?? string.Empty,
-                    blobName: request.BlobName ?? string.Empty,
-                    errorMessage: StorageErrorMessages.ValidationFailed,
+                    errorMessage: StorageErrorMessages.BlobRequestValidationFailed,
                     errorCode: ErrorCodes.BlobValidationFailed);
 
                 return false;
@@ -178,10 +171,10 @@ namespace MyBudgetIA.Infrastructure.Storage
             }
             catch (RequestFailedException ex)
             {
-                var errorCode = AzureBlobErrorCodes.MapAzureBlobErrorCode(ex, BlobOperationType.Download);
+                var errorCode = azureStorageErrorMapper.Map(ex, StorageOperationType.BlobDownload);
                 logger.LogAzureBlobDownloadError(blobName, ex.Status, errorCode);
 
-                throw new BlobStorageException(StorageErrorMessages.AzureDownloadFailed, blobName, errorCode, ex.Status);
+                throw new BlobStorageException(StorageErrorMessages.BlobDownloadFailed, blobName, errorCode, ex.Status);
             }
         }
 
@@ -224,10 +217,10 @@ namespace MyBudgetIA.Infrastructure.Storage
             }
             catch (RequestFailedException ex)
             {
-                var errorCode = AzureBlobErrorCodes.MapAzureBlobErrorCode(ex, BlobOperationType.Download);
+                var errorCode = azureStorageErrorMapper.Map(ex, StorageOperationType.BlobDownload);
                 logger.LogAzureBlobListingError(container.Name, ex.Status, errorCode);
 
-                throw new BlobStorageException(StorageErrorMessages.AzureListFailed, container.Name, errorCode, ex.Status);
+                throw new BlobStorageException(StorageErrorMessages.BlobsListFailed, container.Name, errorCode, ex.Status);
             }
         }
 

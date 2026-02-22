@@ -105,7 +105,7 @@ namespace MyBudgetIA.Api.Middlewares
             {
                 ValidationException validationEx => (
                     validationEx.StatusCode,
-                    validationEx.Message,
+                    validationEx.PublicMessage, // <-- au lieu de validationEx.Message
                     validationEx.Errors
                         .SelectMany(kvp => kvp.Value.Select(msg => new ApiError
                         {

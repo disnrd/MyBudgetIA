@@ -1,4 +1,4 @@
-﻿using MyBudgetIA.Application.Photo.Dtos;
+﻿using MyBudgetIA.Application.Photo.Dtos.Blob;
 using Shared.Storage.DTOS;
 
 namespace MyBudgetIA.Application.Interfaces

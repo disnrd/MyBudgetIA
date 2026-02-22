@@ -24,11 +24,11 @@
 
   <ItemGroup>
     <Folder Include="Photos\DTOs\" />
-    <Folder Include="Photos\Services\" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\MyBudgetIA.Application\MyBudgetIA.Application.csproj" />
+    <ProjectReference Include="..\MyBudgetIA.Infrastructure\MyBudgetIA.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

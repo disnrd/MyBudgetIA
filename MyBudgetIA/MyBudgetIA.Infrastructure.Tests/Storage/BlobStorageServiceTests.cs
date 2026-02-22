@@ -1,15 +1,16 @@
 ﻿using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using Grpc.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
-using MyBudgetIA.Application.Photo.Dtos;
+using MyBudgetIA.Application.Photo.Dtos.Blob;
 using MyBudgetIA.Infrastructure.Configuration;
 using MyBudgetIA.Infrastructure.Exceptions;
 using MyBudgetIA.Infrastructure.Storage;
 using MyBudgetIA.Infrastructure.Storage.Abstractions;
+using MyBudgetIA.Infrastructure.Storage.Abstractions.ErrorMapper;
+using MyBudgetIA.Infrastructure.Storage.Blob;
 using Shared.Models;
 using Shared.TestsLogging;
 
@@ -29,6 +30,7 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
         private IOptions<BlobStorageSettings> options;
         private TestLogger<BlobStorageService> logger;
         private BlobStorageService service;
+        private Mock<IAzureStorageErrorMapper> mockAzureStorageErrorMapper;
 
         #region SetUp
 
@@ -39,7 +41,7 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
             mockContainerClient = new Mock<BlobContainerClient>();
             mockBlobClient = new Mock<BlobClient>();
             logger = new TestLogger<BlobStorageService>();
-
+            mockAzureStorageErrorMapper = new Mock<IAzureStorageErrorMapper>();
 
             options = Options.Create(new BlobStorageSettings
             {
@@ -61,6 +63,7 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
             service = new BlobStorageService(
                 mockBlobServiceClient.Object,
                 options,
+                mockAzureStorageErrorMapper.Object,
                 logger);
         }
 
@@ -156,7 +159,7 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
             {
                 Assert.That(result.IsSuccess, Is.False);
                 Assert.That(result.ErrorCode, Is.EqualTo(ErrorCodes.BlobValidationFailed));
-                Assert.That(result.ErrorMessage, Is.EqualTo(StorageErrorMessages.ValidationFailed));
+                Assert.That(result.ErrorMessage, Is.EqualTo(StorageErrorMessages.BlobRequestValidationFailed));
                 var log = logger.Entries.Single(e => e.EventId.Id == 2);
                 Assert.That(log.Level, Is.EqualTo(LogLevel.Warning));
             }
@@ -263,6 +266,11 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
                     message: "failed",
                     innerException: null));
 
+            mockAzureStorageErrorMapper
+                .Setup(m => m.Map(It.IsAny<RequestFailedException>(), StorageOperationType.BlobUpload))
+                .Returns(expectedErrorCode)
+                .Verifiable();
+
             // Act
             var result = await service.UploadFileAsync(request, CancellationToken.None);
 
@@ -271,7 +279,7 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
                 // Assert
                 Assert.That(result.IsSuccess, Is.False);
                 Assert.That(result.ErrorCode, Is.EqualTo(expectedErrorCode));
-                Assert.That(result.ErrorMessage, Is.EqualTo(StorageErrorMessages.AzureBlobUploadFailed));
+                Assert.That(result.ErrorMessage, Is.EqualTo(StorageErrorMessages.BlobUploadFailed));
 
                 var log = logger.Entries.Single(e => e.EventId.Id == 4);
                 Assert.That(log.Level, Is.EqualTo(LogLevel.Error));
@@ -284,6 +292,10 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
                 It.IsAny<Stream>(),
                 It.IsAny<BlobUploadOptions>(),
                 It.IsAny<CancellationToken>()),
+                Times.Once);
+
+            mockAzureStorageErrorMapper.Verify(
+                m => m.Map(It.IsAny<RequestFailedException>(), StorageOperationType.BlobUpload),
                 Times.Once);
         }
 
@@ -365,7 +377,7 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
                 mockBlobClient.Verify(b => b.DownloadStreamingAsync(
                     It.IsAny<BlobDownloadOptions>(),
                     It.IsAny<CancellationToken>()),
-                    Times.Once);
+                    Times.Once);                
             }
         }
 
@@ -448,6 +460,11 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
                     innerException: null))
                 .Verifiable();
 
+            mockAzureStorageErrorMapper
+                .Setup(m => m.Map(It.IsAny<RequestFailedException>(), StorageOperationType.BlobDownload))
+                .Returns(errorCode)
+                .Verifiable();
+
             // Act
             var ex = Assert.ThrowsAsync<BlobStorageException>(async () =>
                 await service.DownloadBlobAsync(blobName, CancellationToken.None));
@@ -455,7 +472,7 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
             // Assert
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(ex.Message, Is.EqualTo(StorageErrorMessages.AzureDownloadFailed));
+                Assert.That(ex.Message, Is.EqualTo(StorageErrorMessages.BlobDownloadFailed));
                 Assert.That(ex.ErrorCode, Is.EqualTo(errorCode));
 
                 var errorLog = logger.Entries.Single(e => e.EventId.Id == 7);
@@ -476,6 +493,7 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
         {
             // Arrange
             var blobName = "test-blob";
+            var errorCode = "BlobNotFound";
             var statusCode = 404;
 
             mockBlobClient
@@ -484,9 +502,14 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
                     It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new RequestFailedException(
                     status: statusCode,
-                    errorCode: "BlobNotFound",
+                    errorCode: errorCode,
                     message: "Blob not found",
                     innerException: null))
+                .Verifiable();
+
+            mockAzureStorageErrorMapper
+                .Setup(m => m.Map(It.IsAny<RequestFailedException>(), StorageOperationType.BlobDownload))
+                .Returns(ErrorCodes.BlobNotFound)
                 .Verifiable();
 
             // Act
@@ -496,7 +519,7 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
             // Assert
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(ex.Message, Is.EqualTo(StorageErrorMessages.AzureDownloadFailed));
+                Assert.That(ex.Message, Is.EqualTo(StorageErrorMessages.BlobDownloadFailed));
                 Assert.That(ex.ErrorCode, Is.EqualTo(ErrorCodes.BlobNotFound));
 
                 var errorLog = logger.Entries.Single(e => e.EventId.Id == 7);
@@ -508,6 +531,10 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
                 mockBlobClient.Verify(b => b.DownloadStreamingAsync(
                     It.IsAny<BlobDownloadOptions>(),
                     It.IsAny<CancellationToken>()),
+                    Times.Once);
+
+                mockAzureStorageErrorMapper.Verify(
+                    m => m.Map(It.IsAny<RequestFailedException>(), StorageOperationType.BlobDownload),
                     Times.Once);
             }
 
@@ -532,13 +559,13 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
 
             var blobName2 = "blob2";
             var fileName2 = "test2.jpg";
-            var lastUpdated2 = DateTimeOffset.UtcNow; 
+            var lastUpdated2 = DateTimeOffset.UtcNow;
             var blob2 = BlobsModelFactory
                 .BlobItem(
                     name: blobName2,
                     metadata: new Dictionary<string, string> { { nameof(BlobData.FileName), fileName2 } },
                     properties: BlobsModelFactory.BlobItemProperties(accessTierInferred: false, lastModified: lastUpdated2));
-            
+
             var blobs = new[] { blob1, blob2 };
 
             var asyncPageable = BlobAsyncPageableFactory.Create(blobs);
@@ -615,6 +642,11 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
                     innerException: null))
                 .Verifiable();
 
+            mockAzureStorageErrorMapper
+                .Setup(m => m.Map(It.IsAny<RequestFailedException>(), StorageOperationType.BlobDownload))
+                .Returns(ErrorCodes.BlobNotFound)
+                .Verifiable();
+
             // Act
             var ex = Assert.ThrowsAsync<BlobStorageException>(async () =>
                 await service.GetBlobsInfoAsync(CancellationToken.None));
@@ -622,7 +654,7 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
             // Assert
             using (Assert.EnterMultipleScope())
             {
-                Assert.That(ex.Message, Is.EqualTo(StorageErrorMessages.AzureListFailed));
+                Assert.That(ex.Message, Is.EqualTo(StorageErrorMessages.BlobsListFailed));
                 Assert.That(ex.ErrorCode, Is.EqualTo(ErrorCodes.BlobNotFound));
 
                 var errorLog = logger.Entries.Single(e => e.EventId.Id == 10);
@@ -637,8 +669,12 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
                     It.IsAny<string>(),
                     It.IsAny<CancellationToken>()),
                     Times.Once);
+
+                mockAzureStorageErrorMapper.Verify(
+                    m => m.Map(It.IsAny<RequestFailedException>(), StorageOperationType.BlobDownload),
+                    Times.Once);
             }
-    }
+        }
 
         #endregion
     }

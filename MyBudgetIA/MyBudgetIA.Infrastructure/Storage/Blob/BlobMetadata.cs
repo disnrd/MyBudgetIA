@@ -1,11 +1,11 @@
-﻿namespace MyBudgetIA.Infrastructure.Storage
+﻿namespace MyBudgetIA.Infrastructure.Storage.Blob
 {
     internal static class BlobMetadata
     {
         private static class Keys
         {
-            public const string FileName = "fileName";
-            public const string TrackingId = "trackingId";
+            public const string FileName = "FileName";
+            public const string TrackingId = "TrackingId";
         }
 
         public static Dictionary<string, string> Create(string fileName, string trackingId)

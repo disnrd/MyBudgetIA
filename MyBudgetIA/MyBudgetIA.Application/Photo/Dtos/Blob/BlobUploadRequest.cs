@@ -1,4 +1,4 @@
-﻿namespace MyBudgetIA.Application.Photo.Dtos
+﻿namespace MyBudgetIA.Application.Photo.Dtos.Blob
 {
     /// <summary>
     /// Represents a request to upload a blob.

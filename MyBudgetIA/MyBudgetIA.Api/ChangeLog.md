@@ -33,10 +33,24 @@
   - Updated **BlobStorageService**" with method `GetBlobsInfoAsync`.
   - Added REST API endpoint `GetUploadedPhotosInfos` in **PhotosController** to list all photos from blob storage.
 
+- (22/02/2026):
+  - == Queue Storage Integration ==
+  - Added **QueueStorageService**" with method `EnqueueAsync`
+  - Completed and modified `UploadPhotoAsync`:
+    - Queue a message in Azure Queue Storage for each successfully uploaded blob.
+    - For each photo, we return data about the upload result and the enqueue message, provinding information about the success or failure of both operations.
+    - Moved the behavior of final total/partial success/failure response from the controller to the service.
+    - Changed `UploadPhotoResult` validation error messages handling to provide more detailed information about the reasons for failure.
+    - Moved stream validation to his own technical service to separate concerns and improve testability.
+  - Changed `AzureStorageErrorMapper` into two mappers: `BlobStorageErrorMapper` and `QueueStorageErrorMapper`, 
+    adapting with a strategy pattern to enhance maintainability and separation of concerns.
+  - == IMPORTANT == It is mandatory to add -skipApiVersionCheck flag to azurite command to avoid build failures in dev environment with older versions of azurite,
+    as the latest version of azurite does not yet support the latest Azure Storage features (02/26).
 
+  
   == next steps: container, devops, queue storage, function ? retry policies? => stream seekable ?
 dont forget to uncomment integration tests for blob storage and queue storage as they need azurite storage emulator or actual azure storage account to run,
 - and they are currently commented out to avoid build failures in environments without azure storage access.
   
       
-
+      azurite --skipApiVersionCheck

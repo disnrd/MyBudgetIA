@@ -2,8 +2,8 @@
 using MyBudgetIA.Api.Uploads;
 using MyBudgetIA.Application.Photo;
 using MyBudgetIA.Application.Photo.Dtos;
+using MyBudgetIA.Application.Photo.Dtos.Blob;
 using Shared.Models;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace MyBudgetIA.Api.Controllers
 {
@@ -17,10 +17,9 @@ namespace MyBudgetIA.Api.Controllers
         /// and the result for each is included in the response.</remarks>
         /// <param name="photos">A collection of photo files to upload. Must contain at least one file; otherwise, the request will fail.</param>
         /// <param name="ct">A cancellation token that can be used to cancel the upload operation.</param>
-        /// <returns>An IActionResult containing an ApiResponse with a list of BlobUploadResult objects if the upload succeeds,
-        /// or an ApiResponse with error details if the request is invalid.</returns>
+        /// <returns>An IActionResult containing an ApiResponse with a list of UploadPhotosResult objects and a success/fail message.</returns>
         [HttpPost]
-        [ProducesResponseType(typeof(ApiResponse<UploadPhotosResult>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<(IEnumerable<UploadPhotosResult>, string)>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> UploadPhotos([FromForm] IList<IFormFile> photos, CancellationToken ct)
         {
@@ -31,13 +30,7 @@ namespace MyBudgetIA.Api.Controllers
 
             var uploadedFiles = photos.Select(f => new FormFileAdapter(f)).ToList();
 
-            var result = await photoService.UploadPhotoAsync(uploadedFiles, ct);
-
-            var message = result.IsSuccess
-                ? "Upload completed."
-                : result.IsPartialSuccess
-                    ? "Upload partially completed."
-                    : "Upload failed.";
+            (IEnumerable<UploadPhotosResult> result, string message) = await photoService.UploadPhotoAsync(uploadedFiles, ct);
 
             return OkResponse(result, message);
         }

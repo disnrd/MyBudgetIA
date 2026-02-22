@@ -1,10 +1,7 @@
-using Azure.Identity;
-using Azure.Storage.Blobs;
 using FluentValidation;
-using Microsoft.Extensions.Options;
 using MyBudgetIA.Api.Middlewares;
 using MyBudgetIA.Application;
-using MyBudgetIA.Infrastructure.Configuration;
+using MyBudgetIA.Application.TechnicalServices;
 using MyBudgetIA.Infrastructure.Extensions;
 using Serilog;
 
@@ -38,8 +35,12 @@ try
 
     builder.Services.AddValidatorsFromAssemblyContaining<AssemblyMarker>();
 
+    builder.Services.AddScoped<IStreamValidationService, StreamValidationService>();
+
     // Add services to the container.
-    builder.Services.AddInfrastructure(builder.Configuration);
+    builder.Services.AddBlobStorage(builder.Configuration);
+    builder.Services.AddQueueStorage(builder.Configuration);
+    builder.Services.AddInfrastructure();
 
     builder.Services.AddControllers();
     // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi

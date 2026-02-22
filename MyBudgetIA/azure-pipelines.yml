@@ -83,7 +83,11 @@ stages:
 
         - script: dotnet test MyBudgetIA.Infrastructure.Tests/MyBudgetIA.Infrastructure.Tests.csproj --filter "TestCategory=Integration"
           workingDirectory: $(workingDir)
-          displayName: "Run Integration Tests"
+          displayName: "Run Integration Tests - Infrastructure"
+
+        - script: dotnet test MyBudgetIA.Application.Tests/MyBudgetIA.Application.Tests.csproj --filter "TestCategory=Integration"
+          workingDirectory: $(workingDir)
+          displayName: "Run Integration Tests - Application"
 
         - script: docker compose -f docker-compose.integration.yml down
           workingDirectory: $(workingDir)

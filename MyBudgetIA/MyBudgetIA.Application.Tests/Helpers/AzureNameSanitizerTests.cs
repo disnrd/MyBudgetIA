@@ -170,6 +170,14 @@ namespace MyBudgetIA.Application.Tests.Helpers
             Assert.That(result, Is.Not.Null.And.Not.Empty);
             Assert.That(result, Is.Not.EqualTo(" "));
         }
+
+        [Test]
+        public void AzureNameSanitizer_SanitizeBlobName_When_TooLongWithoutExtension_ShouldTruncates()
+        {
+            var input = new string('a', 300);
+            var result = AzureNameSanitizer.SanitizeBlobName(input, maxLength: 50);
+            Assert.That(result, Has.Length.EqualTo(50));
+        }
     }
 
     #endregion

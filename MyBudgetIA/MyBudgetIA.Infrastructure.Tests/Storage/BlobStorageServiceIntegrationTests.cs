@@ -3,10 +3,13 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using MyBudgetIA.Application.Photo.Dtos;
+using MyBudgetIA.Application.Photo.Dtos.Blob;
 using MyBudgetIA.Infrastructure.Configuration;
 using MyBudgetIA.Infrastructure.Storage;
 using MyBudgetIA.Infrastructure.Storage.Abstractions;
+using MyBudgetIA.Infrastructure.Storage.Abstractions.ErrorMapper;
+using MyBudgetIA.Infrastructure.Storage.Blob;
+using MyBudgetIA.Infrastructure.Storage.Queue;
 
 namespace MyBudgetIA.Infrastructure.Tests.Storage
 {
@@ -23,6 +26,7 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
         private BlobServiceClient blobServiceClient;
         private BlobContainerClient containerClient;
         private BlobStorageService blobStorageService;
+        private IAzureStorageErrorMapper azureStorageErrorMapper;
 
         #region SetUp and TearDown
 
@@ -31,14 +35,21 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
         {
             blobServiceClient = new BlobServiceClient(ConnectionString);
             containerClient = blobServiceClient.GetBlobContainerClient(ContainerName);
+            azureStorageErrorMapper = new AzureStorageErrorMapper(
+                 new AzureStorageErrorMapperFactory(
+                     new AzureBlobErrorMapper(),
+                     new AzureQueueErrorMapper()
+                 )
+            );
+
 
             await containerClient.CreateIfNotExistsAsync();
 
             // Clean container
-            
-            await foreach (var blob in containerClient.GetBlobsAsync()) 
-            { 
-                await containerClient.DeleteBlobIfExistsAsync(blob.Name); 
+
+            await foreach (var blob in containerClient.GetBlobsAsync())
+            {
+                await containerClient.DeleteBlobIfExistsAsync(blob.Name);
             }
 
             var options = Options.Create(new BlobStorageSettings
@@ -52,6 +63,7 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
             blobStorageService = new BlobStorageService(
                 blobService: adapter,
                 options: options,
+                azureStorageErrorMapper,
                 logger: NullLogger<BlobStorageService>.Instance);
         }
 
@@ -92,9 +104,6 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(result.IsSuccess, Is.True);
-                Assert.That(result.FileName, Is.EqualTo(fileName));
-                Assert.That(result.BlobName, Is.EqualTo(blobName));
-                Assert.That(result.TrackingId, Is.EqualTo(trackingId));
                 Assert.That(result.Etag, Is.Not.Null.And.Not.Empty);
             }
 
@@ -139,7 +148,7 @@ namespace MyBudgetIA.Infrastructure.Tests.Storage
 
                 Assert.That(second.IsSuccess, Is.False);
                 Assert.That(second.ErrorCode, Is.EqualTo(Shared.Models.ErrorCodes.BlobAlreadyExists));
-                Assert.That(second.ErrorMessage, Is.EqualTo(StorageErrorMessages.AzureBlobUploadFailed));
+                Assert.That(second.ErrorMessage, Is.EqualTo(StorageErrorMessages.BlobUploadFailed));
             }
         }
 

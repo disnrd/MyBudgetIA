@@ -14,8 +14,6 @@ namespace MyBudgetIA.Infrastructure.Storage.Abstractions
     /// <param name="blobServiceClient">The BlobServiceClient instance to use for Azure Blob Storage operations. Cannot be null.</param>
     public class AzureBlobServiceClientAdapter(BlobServiceClient blobServiceClient) : IAzureBlobServiceClient
     {
-        private readonly BlobServiceClient _blobServiceClient = blobServiceClient;
-
         /// <summary>
         /// Gets a client object for interacting with the specified blob container.
         /// </summary>
@@ -23,7 +21,7 @@ namespace MyBudgetIA.Infrastructure.Storage.Abstractions
         /// <returns>A BlobContainerClient instance for the specified container.</returns>
         public BlobContainerClient GetBlobContainerClient(string containerName)
         {
-            return _blobServiceClient.GetBlobContainerClient(containerName);
+            return blobServiceClient.GetBlobContainerClient(containerName);
         }
     }
 }
