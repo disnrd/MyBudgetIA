@@ -57,7 +57,7 @@
      global.json file has been moved to API project to allow different target frameworks for different projects in the solution. This file is still used 
      to resolve the incoherence between lastest .Net 10 sdk used by the project, and the .Net 10 version available on docker.
      App Dockerfile still target .Net 10 though.
-
+-
   
   == next steps: container, devops, queue storage, function ? retry policies? => stream seekable ?
 dont forget to uncomment integration tests for blob storage and queue storage as they need azurite storage emulator or actual azure storage account to run,
