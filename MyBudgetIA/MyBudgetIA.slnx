@@ -1,4 +1,13 @@
 <Solution>
+  <Folder Name="/DevOps/">
+    <File Path="azure-pipelines.yml" />
+  </Folder>
+  <Folder Name="/Docker/">
+    <File Path=".dockerignore" />
+    <File Path="docker-compose.integration.yml" />
+    <File Path="docker-compose.yml" />
+    <File Path="Dockerfile" />
+  </Folder>
   <Folder Name="/src/">
     <File Path=".env" />
   </Folder>
@@ -11,6 +20,7 @@
   </Folder>
   <Folder Name="/src/Presentation/">
     <Project Path="MyBudgetIA.Api/MyBudgetIA.Api.csproj" />
+    <Project Path="MyBudgetIA.InvoiceFunction/MyBudgetIA.InvoiceFunction.csproj" Id="1b9d28b5-e146-452e-9013-2042bd4c0864" />
     <Project Path="Shared/Shared.csproj" Id="d7c8bd16-17ee-498c-9173-ebc3a85bbade" />
   </Folder>
   <Folder Name="/tests/">

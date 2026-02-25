@@ -1,5 +1,6 @@
 ﻿namespace Shared.Storage.DTOS
 {
+    // TODO déplacer en application
     public class BlobDownloadData
     {
         public required Stream Content { get; init; }

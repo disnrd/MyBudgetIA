@@ -32,7 +32,7 @@ namespace MyBudgetIA.Application.Photo
             if (photos.Count > PhotoConstraints.MaxPhotosPerRequest)
             {
                 logger.LogTooManyPhotosProvided(PhotoConstraints.MaxPhotosPerRequest, photos.Count);
-                throw new MaxPhotoCountExceptions(PhotoConstraints.MaxPhotosPerRequest, photos.Count);
+                throw new MaxPhotoCountException(PhotoConstraints.MaxPhotosPerRequest, photos.Count);
             }
 
             List<UploadPhotosResult> totalResult = [];
@@ -52,6 +52,7 @@ namespace MyBudgetIA.Application.Photo
 
                     string trackingId = Guid.NewGuid().ToString("N");
 
+                    // should be domain ?
                     string blobName = BlobNameBuilder.GenerateUniqueBlobName(
                         Messages.Constants.BlobContainerName,
                         photo.FileName,

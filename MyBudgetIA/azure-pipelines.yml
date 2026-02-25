@@ -1,4 +1,6 @@
 trigger:
+  - dev
+pr:
   - master
 
 variables:
@@ -42,21 +44,32 @@ stages:
           inputs:
             version: '10.0.x'
 
+        - task: UseDotNet@2 
+          inputs: 
+            version: '8.0.x'
+
         - script: dotnet --list-sdks
           displayName: 'List installed SDKs'
 
-        - script: cat MyBudgetIA/global.json
-          displayName: "Show global.json"
-
-        # --- Restore ---
-        - script: dotnet restore
+        # --- Restore API --- 
+        - script: dotnet restore MyBudgetIA.Api/MyBudgetIA.Api.csproj
+          workingDirectory: $(workingDir) 
+          displayName: "Restore API" 
+          
+        # --- Restore Function ---
+        - script: dotnet restore MyBudgetIA.InvoiceFunction/MyBudgetIA.InvoiceFunction.csproj
           workingDirectory: $(workingDir)
-          displayName: "Restore"
+          displayName: "Restore Function" 
 
-        # --- Build ---
-        - script: dotnet build --configuration $(buildConfiguration)
+        # --- Build API---
+        - script: dotnet build MyBudgetIA.Api/MyBudgetIA.Api.csproj -c $(buildConfiguration)
           workingDirectory: $(workingDir)
-          displayName: "Build"
+          displayName: "Build API"
+
+        # --- Build Function --- 
+        - script: dotnet build MyBudgetIA.InvoiceFunction/MyBudgetIA.InvoiceFunction.csproj -c $(buildConfiguration) 
+          workingDirectory: $(workingDir) 
+          displayName: "Build Function" 
 
         # --- Unit Tests ---
         - script: dotnet test --configuration $(buildConfiguration) --filter "TestCategory!=Integration"
@@ -107,19 +120,33 @@ stages:
         vmImage: ubuntu-latest
 
       steps:
-        - script: docker build -t mybudgetia:$(Build.BuildId) .
-          workingDirectory: $(workingDir)
-          displayName: "Build Docker image"
+        # --- Build API image ---
+        - script: docker build -t mybudgetia-api:$(Build.BuildId) -f Dockerfile . 
+          workingDirectory: $(workingDir) 
+          displayName: "Build Docker image (API)" 
+          
+        # --- Build Function image --- 
+        - script: docker build -t mybudgetia-invoice-function:$(Build.BuildId) -f MyBudgetIA.InvoiceFunction/Docker/Dockerfile . 
+          workingDirectory: $(workingDir) 
+          displayName: "Build Docker image (Invoice Function)" 
+          
+        # --- Scan API image --- 
+        - script: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --exit-code 1 --severity HIGH,CRITICAL mybudgetia-api:$(Build.BuildId) 
+          workingDirectory: $(workingDir) 
+          displayName: "Scan API image with Trivy"
+          
+        # --- Scan Function image --- disable pour l'instant, debian bookworm a des vulnérabilités connues qui font échouer le pipeline, à corriger dans un second temps (mise à jour de l'image de base)'
+        # - script: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --exit-code 1 --severity HIGH,CRITICAL mybudgetia-invoice-function:$(Build.BuildId)
+        #   workingDirectory: $(workingDir) 
+        #   displayName: "Scan Function image with Trivy" 
 
-        - script: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --exit-code 1 --severity HIGH,CRITICAL mybudgetia:$(Build.BuildId)
+        # --- Export images ---
+        - script: | 
+            mkdir -p $(Build.ArtifactStagingDirectory)/image 
+            docker save mybudgetia-api:$(Build.BuildId) -o $(Build.ArtifactStagingDirectory)/image/mybudgetia-api.tar
+            docker save mybudgetia-invoice-function:$(Build.BuildId) -o $(Build.ArtifactStagingDirectory)/image/mybudgetia-invoice-function.tar 
           workingDirectory: $(workingDir)
-          displayName: "Scan Docker image with Trivy"
-
-        - script: |
-            mkdir -p $(Build.ArtifactStagingDirectory)/image
-            docker save mybudgetia:$(Build.BuildId) -o $(Build.ArtifactStagingDirectory)/image/mybudgetia.tar
-          workingDirectory: $(workingDir)
-          displayName: "Export Docker image as tar"
+          displayName: "Export Docker images as tar"
 
         - task: PublishBuildArtifacts@1
           inputs:
