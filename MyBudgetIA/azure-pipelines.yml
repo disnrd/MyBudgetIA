@@ -137,8 +137,8 @@ stages:
           
         # --- Scan Function image --- 
         - script: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --exit-code 1 --severity HIGH,CRITICAL mybudgetia-invoice-function:$(Build.BuildId)
-          workingDirectory: 
-          $(workingDir) displayName: "Scan Function image with Trivy" 
+          workingDirectory: $(workingDir) 
+          displayName: "Scan Function image with Trivy" 
 
         # --- Export images ---
         - script: | 
