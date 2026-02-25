@@ -11,6 +11,7 @@ namespace MyBudgetIA.Application.Helpers
     /// Azure naming conventions. The class is static and cannot be instantiated.</remarks>
     internal static partial class AzureNameSanitizer
     {
+        // TODO move to domain?
         public const int MaxLenght = 100;
 
         [GeneratedRegex(@"[^a-zA-Z0-9._\-/]")]

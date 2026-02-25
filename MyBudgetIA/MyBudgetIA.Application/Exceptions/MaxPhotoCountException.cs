@@ -16,7 +16,7 @@ namespace MyBudgetIA.Application.Exceptions
     /// photos. The values provided can be used to inform the user or for logging purposes.</remarks>
     /// <param name="maxPhotosAllowed">The maximum number of photos permitted per request.</param>
     /// <param name="photosProvided">The number of photos that were provided in the request.</param>
-    public sealed class MaxPhotoCountExceptions(int maxPhotosAllowed, int photosProvided) : ApplicationException(
+    public sealed class MaxPhotoCountException(int maxPhotosAllowed, int photosProvided) : ApplicationException(
             publicMessage: $"Too many photos provided. Maximum {maxPhotosAllowed} photos allowed per request, but {photosProvided} were provided",
             errorCode: ErrorCodes.MaxPhotoCountExceeded,
             statusCode: 400)

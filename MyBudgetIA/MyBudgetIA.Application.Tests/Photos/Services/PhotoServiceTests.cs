@@ -84,7 +84,7 @@ namespace MyBudgetIA.Application.Tests.Photos.Services
             }
 
             // Act & Assert
-            _ = Assert.ThrowsAsync<MaxPhotoCountExceptions>(()
+            _ = Assert.ThrowsAsync<MaxPhotoCountException>(()
                 => photoService.UploadPhotoAsync(photos, CancellationToken.None));
 
             using (Assert.EnterMultipleScope())

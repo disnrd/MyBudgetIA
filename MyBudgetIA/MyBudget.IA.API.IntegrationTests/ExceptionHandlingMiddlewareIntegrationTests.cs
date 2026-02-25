@@ -176,7 +176,7 @@ namespace MyBudgetIA.Api.Tests
         public async Task ExceptionHandlingMiddleware_WithApplicationException_ShouldReturn400AndIncludeApiError()
         {
             // Arrange
-            var ex = new MaxPhotoCountExceptions(maxPhotosAllowed: 5, photosProvided: 6);
+            var ex = new MaxPhotoCountException(maxPhotosAllowed: 5, photosProvided: 6);
 
             Task next(HttpContext ctx) => throw ex;
             _middleware = new ExceptionHandlingMiddleware(next, _loggerMock.Object, _environmentMock.Object);
@@ -204,7 +204,7 @@ namespace MyBudgetIA.Api.Tests
         {
             // Arrange
             _environmentMock.Setup(e => e.EnvironmentName).Returns("Production");
-            var ex = new MaxPhotoCountExceptions(maxPhotosAllowed: 5, photosProvided: 6);
+            var ex = new MaxPhotoCountException(maxPhotosAllowed: 5, photosProvided: 6);
 
             Task next(HttpContext ctx) => throw ex;
             _middleware = new ExceptionHandlingMiddleware(next, _loggerMock.Object, _environmentMock.Object);

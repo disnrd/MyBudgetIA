@@ -17,7 +17,7 @@ services:
       ASPNETCORE_ENVIRONMENT: "Integration"
       BlobStorage__ContainerName: "photos-dev"
       BlobStorage__ConnectionString: "${AZURITE_CONNECTION_STRING}"
-      QueueStorage__QueueName: "photo-ocr-request"
-      QueueStorage__ConnectionString: "${AZURITE_CONNECTION_STRING}" 
+      QueueStorageQueueName: "photo-invoice"
+      StorageConnectionString: "${AZURITE_CONNECTION_STRING}" 
     depends_on:
       - azurite

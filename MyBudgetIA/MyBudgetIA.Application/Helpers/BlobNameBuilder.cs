@@ -1,5 +1,6 @@
 ﻿namespace MyBudgetIA.Application.Helpers
 {
+    // TODO move to domain?
     internal static class BlobNameBuilder
     {
         public static string GenerateUniqueBlobName(

@@ -1,0 +1,12 @@
+﻿docker compose -f docker-compose.yml -f docker-compose.functions.yml up
+
+
+docker compose \
+  -f docker-compose.yml \
+  -f MyBudgetIA.InvoiceFunction/Docker/docker-compose.functions.yml \
+  up --build
+
+
+
+  docker buildx prune --all
+docker system prune -af

@@ -47,6 +47,17 @@
   - == IMPORTANT == It is mandatory to add -skipApiVersionCheck flag to azurite command to avoid build failures in dev environment with older versions of azurite,
     as the latest version of azurite does not yet support the latest Azure Storage features (02/26).
 
+- (25/02/2026):
+  - == Azure Function: Invoice Processs Trigger Integration ==
+  - Azure Function is triggered by messages in the Azure Queue Storage.
+  - Has his own dockerFile to be containerized and deployed independently from the API: currently docker compose (from app) build both images.
+    - Azure function isolated worker is not yet compatible with the latest Azure Storage SDK, so we choose to use .Net 8.
+     Therefore, we had to switch from .Net 10 to .Net 8 for the Application, Infrastructure and Domain projects to maintaint compatibility.
+     Tests and API projects are still on .Net 10 to benefit from the latest features and improvements, as they do not have the same compatibility issues with Azure Storage SDK.
+     global.json file has been moved to API project to allow different target frameworks for different projects in the solution. This file is still used 
+     to resolve the incoherence between lastest .Net 10 sdk used by the project, and the .Net 10 version available on docker.
+     App Dockerfile still target .Net 10 though.
+
   
   == next steps: container, devops, queue storage, function ? retry policies? => stream seekable ?
 dont forget to uncomment integration tests for blob storage and queue storage as they need azurite storage emulator or actual azure storage account to run,

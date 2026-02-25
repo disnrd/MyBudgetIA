@@ -1,0 +1,15 @@
+﻿services:
+  invoice-function:
+    build:
+      context: ./MyBudgetIA.InvoiceFunction
+      dockerfile: Docker/Dockerfile
+    container_name: invoice-function
+    environment:
+      AzureWebJobsStorage: "${AZURITE_CONNECTION_STRING}"
+      AzureFunctionsJobHost__Logging__Console__IsEnabled: "true"
+      StorageConnectionString: "${AZURITE_CONNECTION_STRING}"
+
+    ports:
+      - "7071:80"   # 80 dans le container → 7071 en local (comme func start)
+    depends_on:
+      - azurite
